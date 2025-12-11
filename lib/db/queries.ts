@@ -163,20 +163,36 @@ export async function getProductDetail(params: {
       doneSales1Name: string;
       quantity: bigint;
       salesAmount: number;
+      totalSales: number | null;
     }>>`
       SELECT
-        doneSales1Name,
-        SUM(goodsNum) as quantity,
-        SUM(goodsNum * goodsPrice) as salesAmount
-      FROM report.fur_sell_order_goods
-      WHERE goodsNameSpu = ${goodsNameSpu}
-        AND shopName = ${shop}
-        ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
-        ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-        AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
-        AND goodsNum > 0
-        AND doneSales1Name IS NOT NULL
-      GROUP BY doneSales1Name
+        v.doneSales1Name,
+        SUM(v.goodsNum) as quantity,
+        SUM(v.goodsNum * v.goodsPrice) as salesAmount,
+        st.totalSales
+      FROM report.fur_sell_order_goods v
+      LEFT JOIN (
+        SELECT
+          doneSales1Name,
+          SUM(goodsNum * goodsPrice) as totalSales
+        FROM report.fur_sell_order_goods
+        WHERE shopName = ${shop}
+          ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
+          ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
+          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND goodsBom NOT LIKE 'FY%'
+          AND goodsNum > 0
+        GROUP BY doneSales1Name
+      ) st ON v.doneSales1Name = st.doneSales1Name
+      WHERE v.goodsNameSpu = ${goodsNameSpu}
+        AND v.shopName = ${shop}
+        ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
+        ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
+        AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+        AND v.goodsBom NOT LIKE 'FY%'
+        AND v.goodsNum > 0
+        AND v.doneSales1Name IS NOT NULL
+      GROUP BY v.doneSales1Name, st.totalSales
       ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
     `;
 
@@ -184,6 +200,7 @@ export async function getProductDetail(params: {
       name: item.doneSales1Name || '未知销售员',
       quantity: Number(item.quantity),
       salesAmount: Number(item.salesAmount),
+      personTotalSales: Number(item.totalSales || 0),
     }));
   } else {
     // 如果是全部门店，根据 groupBy 参数决定按门店还是按销售员统计
@@ -193,19 +210,35 @@ export async function getProductDetail(params: {
         doneSales1Name: string;
         quantity: bigint;
         salesAmount: number;
+        totalSales: number | null;
       }>>`
         SELECT
-          doneSales1Name,
-          SUM(goodsNum) as quantity,
-          SUM(goodsNum * goodsPrice) as salesAmount
-        FROM report.fur_sell_order_goods
-        WHERE goodsNameSpu = ${goodsNameSpu}
-          ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
-          ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
-          AND goodsNum > 0
-          AND doneSales1Name IS NOT NULL
-        GROUP BY doneSales1Name
+          v.doneSales1Name,
+          SUM(v.goodsNum) as quantity,
+          SUM(v.goodsNum * v.goodsPrice) as salesAmount,
+          st.totalSales
+        FROM report.fur_sell_order_goods v
+        LEFT JOIN (
+          SELECT
+            doneSales1Name,
+            SUM(goodsNum * goodsPrice) as totalSales
+          FROM report.fur_sell_order_goods
+          WHERE 1=1
+            ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
+            ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
+            AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+            AND goodsBom NOT LIKE 'FY%'
+            AND goodsNum > 0
+          GROUP BY doneSales1Name
+        ) st ON v.doneSales1Name = st.doneSales1Name
+        WHERE v.goodsNameSpu = ${goodsNameSpu}
+          ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
+          ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
+          AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND v.goodsBom NOT LIKE 'FY%'
+          AND v.goodsNum > 0
+          AND v.doneSales1Name IS NOT NULL
+        GROUP BY v.doneSales1Name, st.totalSales
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
 
@@ -213,6 +246,7 @@ export async function getProductDetail(params: {
         name: item.doneSales1Name || '未知销售员',
         quantity: Number(item.quantity),
         salesAmount: Number(item.salesAmount),
+        personTotalSales: Number(item.totalSales || 0),
       }));
     } else {
       // 按门店统计 - 优化：直接使用 shopName，并判断是否摆场
@@ -222,14 +256,29 @@ export async function getProductDetail(params: {
         quantity: bigint;
         salesAmount: number;
         hasDisplay: number | null;
+        totalSales: number | null;
       }>>`
         SELECT
           v.shopName,
           v.shop,
           SUM(v.goodsNum) as quantity,
           SUM(v.goodsNum * v.goodsPrice) as salesAmount,
-          MAX(CASE WHEN d.goodsName IS NOT NULL THEN 1 ELSE 0 END) as hasDisplay
+          MAX(CASE WHEN d.goodsName IS NOT NULL THEN 1 ELSE 0 END) as hasDisplay,
+          st.totalSales
         FROM report.fur_sell_order_goods v
+        LEFT JOIN (
+          SELECT
+            shop,
+            SUM(goodsNum * goodsPrice) as totalSales
+          FROM report.fur_sell_order_goods
+          WHERE 1=1
+            ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
+            ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
+            AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+            AND goodsBom NOT LIKE 'FY%'
+            AND goodsNum > 0
+          GROUP BY shop
+        ) st ON v.shop = st.shop
         LEFT JOIN (
           SELECT DISTINCT c.name as goodsName, b.shopId as shop
           FROM fnjinew2.stock_goods a
@@ -240,10 +289,11 @@ export async function getProductDetail(params: {
         WHERE v.goodsNameSpu = ${goodsNameSpu}
           ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
-          AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and v.goodsBom not like 'FY%'
+          AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND v.goodsBom NOT LIKE 'FY%'
           AND v.goodsNum > 0
           AND v.shopName IS NOT NULL
-        GROUP BY v.shopName, v.shop
+        GROUP BY v.shopName, v.shop, st.totalSales
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
 
@@ -252,6 +302,7 @@ export async function getProductDetail(params: {
         quantity: Number(item.quantity),
         salesAmount: Number(item.salesAmount),
         hasDisplay: Number(item.hasDisplay) === 1,
+        shopTotalSales: Number(item.totalSales || 0),
       }));
     }
   }

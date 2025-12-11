@@ -9,6 +9,8 @@ interface ProductDetail {
   quantity: number;
   salesAmount: number;
   hasDisplay?: boolean;
+  shopTotalSales?: number;
+  personTotalSales?: number;
 }
 
 interface ProductDetailModalProps {
@@ -33,8 +35,14 @@ export default function ProductDetailModal({
   isLoading,
 }: ProductDetailModalProps) {
   const renderTable = (details: ProductDetail[], title: string, showDisplayColumn = false) => {
-    // 计算总销售额
+    // 计算总销售额（用于计算该商品在所有门店/销售员的占比）
     const totalSalesAmount = details.reduce((sum, item) => sum + item.salesAmount, 0);
+
+    // 判断是否显示个人/门店总销售额占比
+    const showTotalPercentage = details.some(item =>
+      (item.shopTotalSales && item.shopTotalSales > 0) ||
+      (item.personTotalSales && item.personTotalSales > 0)
+    );
 
     return (
       <div className="mt-4">
@@ -57,6 +65,11 @@ export default function ProductDetailModal({
                 <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
                   销售额占比
                 </th>
+                {showTotalPercentage && (
+                  <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+                    占{title}销售额比
+                  </th>
+                )}
                 {showDisplayColumn && (
                   <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
                     是否摆场
@@ -67,6 +80,10 @@ export default function ProductDetailModal({
             <tbody className="divide-y divide-gray-200 bg-white">
               {details.map((item, index) => {
                 const percentage = totalSalesAmount > 0 ? (item.salesAmount / totalSalesAmount) * 100 : 0;
+
+                // 计算占门店/销售员总销售额的占比
+                const totalSales = item.shopTotalSales || item.personTotalSales || 0;
+                const totalPercentage = totalSales > 0 ? (item.salesAmount / totalSales) * 100 : 0;
 
                 return (
                   <tr key={index} className="hover:bg-gray-50">
@@ -92,6 +109,11 @@ export default function ProductDetailModal({
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-blue-600 font-medium">
                       {percentage.toFixed(2)}%
                     </td>
+                    {showTotalPercentage && (
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-purple-600 font-medium">
+                        {totalPercentage.toFixed(2)}%
+                      </td>
+                    )}
                     {showDisplayColumn && (
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
