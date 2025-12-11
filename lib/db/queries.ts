@@ -6,23 +6,32 @@ import type { FilterParams, KPIMetrics, RankingItem } from '@/types/report';
 // 优化后的查询函数 - 使用 report.fur_sell_order_goods 视图
 // ========================================
 
-// 1. 获取门店列表（从枚举表）- 无需修改
+// 1. 获取门店列表 - 优化：直接从视图获取
 export async function getShops(): Promise<Array<{ name: string; value: string }>> {
-  const shops = await prisma.ubiggerEnum.findMany({
-    where: { enumName: 'shop' },
-    select: { name: true, value: true },
-    orderBy: { value: 'asc' },
-  });
-  return shops.map(s => ({ name: s.name, value: s.value }));
+  const results = await prisma.$queryRaw<Array<{ shopName: string }>>`
+    SELECT DISTINCT shopName
+    FROM report.fur_sell_order_goods
+    WHERE shopName IS NOT NULL
+    ORDER BY shopName ASC
+  `;
+  return results.map(r => ({ name: r.shopName, value: r.shopName }));
 }
 
-// 2. 获取销售员列表 - 优化：直接从视图获取
-export async function getSalespeople(shop?: string): Promise<string[]> {
+// 2. 获取销售员列表 - 优化：直接从视图获取，支持时间范围筛选
+export async function getSalespeople(params?: {
+  shop?: string;
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<string[]> {
   const results = await prisma.$queryRaw<Array<{ doneSales1Name: string }>>`
     SELECT DISTINCT doneSales1Name
     FROM report.fur_sell_order_goods
     WHERE doneSales1Name IS NOT NULL
-      ${shop ? Prisma.sql`AND shop = ${shop}` : Prisma.empty}
+      ${params?.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
+      ${params?.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
+      ${params?.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+      AND goodsNum > 0
     ORDER BY doneSales1Name ASC
   `;
   return results.map(r => r.doneSales1Name);
@@ -43,7 +52,7 @@ export async function getKPIMetrics(params: FilterParams): Promise<KPIMetrics> {
       COUNT(DISTINCT goodsName) as productCount
     FROM report.fur_sell_order_goods
     WHERE 1=1
-      ${params.shop ? Prisma.sql`AND shop = ${params.shop}` : Prisma.empty}
+      ${params.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
@@ -76,13 +85,13 @@ export async function getProductRankingByQuantity(
       SUM(goodsNum) as quantity
     FROM report.fur_sell_order_goods
     WHERE 1=1
-      ${params.shop ? Prisma.sql`AND shop = ${params.shop}` : Prisma.empty}
+      ${params.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
       AND goodsNum > 0
-    GROUP BY goodsName, goodsSpec
+    GROUP BY goodsName
     ORDER BY quantity DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
@@ -114,13 +123,13 @@ export async function getProductRankingBySales(
       SUM(goodsNum * goodsPrice) as salesAmount
     FROM report.fur_sell_order_goods
     WHERE 1=1
-      ${params.shop ? Prisma.sql`AND shop = ${params.shop}` : Prisma.empty}
+      ${params.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
       AND goodsNum > 0
-    GROUP BY goodsName, goodsSpec
+    GROUP BY goodsName
     ORDER BY salesAmount DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
@@ -161,7 +170,7 @@ export async function getProductDetail(params: {
         SUM(goodsNum * goodsPrice) as salesAmount
       FROM report.fur_sell_order_goods
       WHERE goodsName = ${goodsName}
-        AND shop = ${shop}
+        AND shopName = ${shop}
         ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
         ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
         AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
@@ -206,24 +215,24 @@ export async function getProductDetail(params: {
         salesAmount: Number(item.salesAmount),
       }));
     } else {
-      // 按门店统计，需要 JOIN 获取门店名称
+      // 按门店统计 - 优化：直接使用 shopName，无需 JOIN
       const results = await prisma.$queryRaw<Array<{
         shopName: string;
         quantity: bigint;
         salesAmount: number;
       }>>`
         SELECT
-          COALESCE(ue.name, v.shop) as shopName,
-          SUM(v.goodsNum) as quantity,
-          SUM(v.goodsNum * v.goodsPrice) as salesAmount
-        FROM report.fur_sell_order_goods v
-        LEFT JOIN ubigger_enum ue ON ue.value = v.shop AND ue.enumName = 'shop'
-        WHERE v.goodsName = ${goodsName}
-          ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
-          ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
-          AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
-          AND v.goodsNum > 0
-        GROUP BY v.shop, ue.name
+          shopName,
+          SUM(goodsNum) as quantity,
+          SUM(goodsNum * goodsPrice) as salesAmount
+        FROM report.fur_sell_order_goods
+        WHERE goodsName = ${goodsName}
+          ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
+          ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
+          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND goodsNum > 0
+          AND shopName IS NOT NULL
+        GROUP BY shopName
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
 

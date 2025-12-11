@@ -23,12 +23,14 @@ export default function FilterBar({ filters, onChange }: FilterBarProps) {
     },
   });
 
-  // 获取销售员列表（根据选中的门店联动）
+  // 获取销售员列表（根据门店和时间范围联动）
   const { data: salespeopleData } = useQuery({
-    queryKey: ['salespeople', filters.shop],
+    queryKey: ['salespeople', filters.shop, filters.startDate, filters.endDate],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filters.shop) params.set('shop', filters.shop);
+      if (filters.startDate) params.set('startDate', filters.startDate.toISOString());
+      if (filters.endDate) params.set('endDate', filters.endDate.toISOString());
       const res = await fetch(`/api/filters/salespeople?${params}`);
       return res.json();
     },
@@ -40,26 +42,26 @@ export default function FilterBar({ filters, onChange }: FilterBarProps) {
 
     switch (type) {
       case 'today':
-        onChange({ ...filters, startDate: new Date(now.setHours(0, 0, 0, 0)), endDate: today });
+        onChange({ ...filters, startDate: new Date(now.setHours(0, 0, 0, 0)), endDate: today, salesperson: '' });
         break;
       case 'week':
         const weekAgo = new Date(now);
         weekAgo.setDate(weekAgo.getDate() - 7);
-        onChange({ ...filters, startDate: weekAgo, endDate: today });
+        onChange({ ...filters, startDate: weekAgo, endDate: today, salesperson: '' });
         break;
       case 'month':
-        onChange({ ...filters, startDate: startOfMonth(now), endDate: endOfDay(now) });
+        onChange({ ...filters, startDate: startOfMonth(now), endDate: endOfDay(now), salesperson: '' });
         break;
       case 'lastMonth':
         const lastMonth = subMonths(now, 1);
-        onChange({ ...filters, startDate: startOfMonth(lastMonth), endDate: endOfMonth(lastMonth) });
+        onChange({ ...filters, startDate: startOfMonth(lastMonth), endDate: endOfMonth(lastMonth), salesperson: '' });
         break;
       case 'lastLastMonth':
         const lastLastMonth = subMonths(now, 2);
-        onChange({ ...filters, startDate: startOfMonth(lastLastMonth), endDate: endOfMonth(lastLastMonth) });
+        onChange({ ...filters, startDate: startOfMonth(lastLastMonth), endDate: endOfMonth(lastLastMonth), salesperson: '' });
         break;
       case 'year':
-        onChange({ ...filters, startDate: startOfYear(now), endDate: endOfDay(now) });
+        onChange({ ...filters, startDate: startOfYear(now), endDate: endOfDay(now), salesperson: '' });
         break;
     }
   };
@@ -111,7 +113,7 @@ export default function FilterBar({ filters, onChange }: FilterBarProps) {
           <input
             type="date"
             value={filters.startDate.toISOString().split('T')[0]}
-            onChange={(e) => onChange({ ...filters, startDate: new Date(e.target.value) })}
+            onChange={(e) => onChange({ ...filters, startDate: new Date(e.target.value), salesperson: '' })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
@@ -124,7 +126,7 @@ export default function FilterBar({ filters, onChange }: FilterBarProps) {
           <input
             type="date"
             value={filters.endDate.toISOString().split('T')[0]}
-            onChange={(e) => onChange({ ...filters, endDate: new Date(e.target.value) })}
+            onChange={(e) => onChange({ ...filters, endDate: new Date(e.target.value), salesperson: '' })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
