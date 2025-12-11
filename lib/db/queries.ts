@@ -82,7 +82,7 @@ export async function getProductRankingByQuantity(
       ${params.endDate ? Prisma.sql`AND so.payTime <= ${params.endDate}` : Prisma.empty}
       AND so.status >= 3 AND so.status != 8 AND so.orderType = 1 AND so.orderTypeSub = 0
       AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553' AND sog.goodsNum>0    AND sog.goodsBom != 'FY00049'   AND sog.goodsBom != 'FY00017'   AND sog.goodsBom != '6616801'
-    GROUP BY sog.goodsName, sog.goodsSpec
+    GROUP BY sog.goodsName
     ORDER BY quantity DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
@@ -121,7 +121,7 @@ export async function getProductRankingBySales(
       ${params.endDate ? Prisma.sql`AND so.payTime <= ${params.endDate}` : Prisma.empty}
       AND so.status >= 3 AND so.status != 8 AND so.orderType = 1 AND so.orderTypeSub = 0
       AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553' AND sog.goodsNum>0    AND sog.goodsBom != 'FY00049'   AND sog.goodsBom != 'FY00017'   AND sog.goodsBom != '6616801'
-    GROUP BY sog.goodsName, sog.goodsSpec
+    GROUP BY sog.goodsName
     ORDER BY salesAmount DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
