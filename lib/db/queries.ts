@@ -215,24 +215,34 @@ export async function getProductDetail(params: {
         salesAmount: Number(item.salesAmount),
       }));
     } else {
-      // 按门店统计 - 优化：直接使用 shopName，无需 JOIN
+      // 按门店统计 - 优化：直接使用 shopName，并判断是否摆场
       const results = await prisma.$queryRaw<Array<{
         shopName: string;
+        shop: string;
         quantity: bigint;
         salesAmount: number;
+        hasDisplay: number | null;
       }>>`
         SELECT
-          shopName,
-          SUM(goodsNum) as quantity,
-          SUM(goodsNum * goodsPrice) as salesAmount
-        FROM report.fur_sell_order_goods
-        WHERE goodsName = ${goodsName}
-          ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
-          ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
-          AND goodsNum > 0
-          AND shopName IS NOT NULL
-        GROUP BY shopName
+          v.shopName,
+          v.shop,
+          SUM(v.goodsNum) as quantity,
+          SUM(v.goodsNum * v.goodsPrice) as salesAmount,
+          MAX(CASE WHEN d.goodsBom IS NOT NULL THEN 1 ELSE 0 END) as hasDisplay
+        FROM report.fur_sell_order_goods v
+        LEFT JOIN (
+          SELECT DISTINCT a.bom as goodsBom, b.shopId as shop
+          FROM fnjinew2.stock_goods a
+          INNER JOIN fnjinew2.stock_type b ON a.storeBom = b.bom
+          WHERE a.storeNum > 0 AND b.name LIKE '%摆场%'
+        ) d ON v.goodsBom = d.goodsBom AND v.shop = d.shop
+        WHERE v.goodsName = ${goodsName}
+          ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
+          ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
+          AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and v.goodsBom not like 'FY%'
+          AND v.goodsNum > 0
+          AND v.shopName IS NOT NULL
+        GROUP BY v.shopName, v.shop
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
 
@@ -240,6 +250,7 @@ export async function getProductDetail(params: {
         name: item.shopName,
         quantity: Number(item.quantity),
         salesAmount: Number(item.salesAmount),
+        hasDisplay: Number(item.hasDisplay) === 1,
       }));
     }
   }

@@ -8,6 +8,7 @@ interface ProductDetail {
   name: string;
   quantity: number;
   salesAmount: number;
+  hasDisplay?: boolean;
 }
 
 interface ProductDetailModalProps {
@@ -31,61 +32,90 @@ export default function ProductDetailModal({
   type,
   isLoading,
 }: ProductDetailModalProps) {
-  const renderTable = (details: ProductDetail[], title: string) => (
-    <div className="mt-4">
-      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
-        <table className="min-w-full divide-y divide-gray-300">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">
-                排名
-              </th>
-              <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                {title}
-              </th>
-              <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                销量
-              </th>
-              <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                销售额
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {details.map((item, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm">
-                  <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${
-                    index === 0 ? 'bg-yellow-100 text-yellow-800' :
-                    index === 1 ? 'bg-gray-100 text-gray-800' :
-                    index === 2 ? 'bg-orange-100 text-orange-800' :
-                    'bg-blue-50 text-blue-800'
-                  } font-semibold`}>
-                    {index + 1}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">
-                  {item.name}
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-gray-700">
-                  {item.quantity.toLocaleString()}
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm text-right font-semibold text-gray-900">
-                  ¥{item.salesAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+  const renderTable = (details: ProductDetail[], title: string, showDisplayColumn = false) => {
+    // 计算总销售额
+    const totalSalesAmount = details.reduce((sum, item) => sum + item.salesAmount, 0);
 
-      {details.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          暂无数据
+    return (
+      <div className="mt-4">
+        <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
+          <table className="min-w-full divide-y divide-gray-300">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">
+                  排名
+                </th>
+                <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                  {title}
+                </th>
+                <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+                  销量
+                </th>
+                <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+                  销售额
+                </th>
+                <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+                  销售额占比
+                </th>
+                {showDisplayColumn && (
+                  <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                    是否摆场
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {details.map((item, index) => {
+                const percentage = totalSalesAmount > 0 ? (item.salesAmount / totalSalesAmount) * 100 : 0;
+
+                return (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm">
+                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${
+                        index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                        index === 1 ? 'bg-gray-100 text-gray-800' :
+                        index === 2 ? 'bg-orange-100 text-orange-800' :
+                        'bg-blue-50 text-blue-800'
+                      } font-semibold`}>
+                        {index + 1}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">
+                      {item.name}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-gray-700">
+                      {item.quantity.toLocaleString()}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-right font-semibold text-gray-900">
+                      ¥{item.salesAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-blue-600 font-medium">
+                      {percentage.toFixed(2)}%
+                    </td>
+                    {showDisplayColumn && (
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          item.hasDisplay ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {item.hasDisplay ? '是' : '否'}
+                        </span>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      )}
-    </div>
-  );
+
+        {details.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            暂无数据
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -169,10 +199,10 @@ export default function ProductDetailModal({
                     </Tab.List>
                     <Tab.Panels className="mt-2">
                       <Tab.Panel>
-                        {renderTable(shopDetails, '门店')}
+                        {renderTable(shopDetails, '门店', true)}
                       </Tab.Panel>
                       <Tab.Panel>
-                        {renderTable(salespersonDetails, '销售员')}
+                        {renderTable(salespersonDetails, '销售员', false)}
                       </Tab.Panel>
                     </Tab.Panels>
                   </Tab.Group>
