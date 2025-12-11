@@ -49,7 +49,7 @@ export async function getKPIMetrics(params: FilterParams): Promise<KPIMetrics> {
       COUNT(DISTINCT orderSn) as orderCount,
       COALESCE(SUM(goodsNum), 0) as totalQuantity,
       COALESCE(SUM(goodsNum * goodsPrice), 0) as totalSales,
-      COUNT(DISTINCT goodsName) as productCount
+      COUNT(DISTINCT goodsNameSpu) as productCount
     FROM report.fur_sell_order_goods
     WHERE 1=1
       ${params.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
@@ -75,12 +75,12 @@ export async function getProductRankingByQuantity(
   params: FilterParams & { limit?: number }
 ): Promise<RankingItem[]> {
   const results = await prisma.$queryRaw<Array<{
-    goodsName: string;
+    goodsNameSpu: string;
     goodsSpec: string;
     quantity: bigint;
   }>>`
     SELECT
-      goodsName,
+      goodsNameSpu,
       goodsSpec,
       SUM(goodsNum) as quantity
     FROM report.fur_sell_order_goods
@@ -89,9 +89,9 @@ export async function getProductRankingByQuantity(
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
       AND goodsNum > 0
-    GROUP BY goodsName
+    GROUP BY goodsNameSpu
     ORDER BY quantity DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
@@ -101,7 +101,7 @@ export async function getProductRankingByQuantity(
 
   return results.map((item, index) => ({
     rank: index + 1,
-    goodsName: item.goodsName,
+    goodsName: item.goodsNameSpu,
     goodsSpec: item.goodsSpec,
     quantity: Number(item.quantity),
     percentage: total > 0 ? (Number(item.quantity) / total) * 100 : 0,
@@ -113,12 +113,12 @@ export async function getProductRankingBySales(
   params: FilterParams & { limit?: number }
 ): Promise<RankingItem[]> {
   const results = await prisma.$queryRaw<Array<{
-    goodsName: string;
+    goodsNameSpu: string;
     goodsSpec: string;
     salesAmount: number;
   }>>`
     SELECT
-      goodsName,
+      goodsNameSpu,
       goodsSpec,
       SUM(goodsNum * goodsPrice) as salesAmount
     FROM report.fur_sell_order_goods
@@ -127,9 +127,9 @@ export async function getProductRankingBySales(
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
       AND goodsNum > 0
-    GROUP BY goodsName
+    GROUP BY goodsNameSpu
     ORDER BY salesAmount DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
@@ -139,7 +139,7 @@ export async function getProductRankingBySales(
 
   return results.map((item, index) => ({
     rank: index + 1,
-    goodsName: item.goodsName,
+    goodsName: item.goodsNameSpu,
     goodsSpec: item.goodsSpec,
     salesAmount: item.salesAmount,
     percentage: total > 0 ? (item.salesAmount / total) * 100 : 0,
@@ -155,7 +155,7 @@ export async function getProductDetail(params: {
   type: 'quantity' | 'sales';
   groupBy?: 'shop' | 'salesperson';
 }) {
-  const { goodsName, shop, startDate, endDate, type, groupBy } = params;
+  const { goodsName: goodsNameSpu, shop, startDate, endDate, type, groupBy } = params;
 
   if (shop) {
     // 如果选择了门店，按销售员统计 - 使用 doneSales1Name
@@ -169,11 +169,11 @@ export async function getProductDetail(params: {
         SUM(goodsNum) as quantity,
         SUM(goodsNum * goodsPrice) as salesAmount
       FROM report.fur_sell_order_goods
-      WHERE goodsName = ${goodsName}
+      WHERE goodsNameSpu = ${goodsNameSpu}
         AND shopName = ${shop}
         ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
         ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-        AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
+        AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
         AND goodsNum > 0
         AND doneSales1Name IS NOT NULL
       GROUP BY doneSales1Name
@@ -199,10 +199,10 @@ export async function getProductDetail(params: {
           SUM(goodsNum) as quantity,
           SUM(goodsNum * goodsPrice) as salesAmount
         FROM report.fur_sell_order_goods
-        WHERE goodsName = ${goodsName}
+        WHERE goodsNameSpu = ${goodsNameSpu}
           ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
+          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
           AND goodsNum > 0
           AND doneSales1Name IS NOT NULL
         GROUP BY doneSales1Name
@@ -236,8 +236,8 @@ export async function getProductDetail(params: {
           INNER JOIN fnjinew2.stock_type b ON a.storeBom = b.bom
           INNER JOIN fnjinew2.shop_product_sku c ON c.bom = a.bom
           WHERE a.storeNum > 0 AND b.name LIKE '%摆场%'
-        ) d ON v.goodsName = d.goodsName AND v.shop = d.shop
-        WHERE v.goodsName = ${goodsName}
+        ) d ON v.goodsNameSpu = d.goodsName AND v.shop = d.shop
+        WHERE v.goodsNameSpu = ${goodsNameSpu}
           ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
           AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and v.goodsBom not like 'FY%'
