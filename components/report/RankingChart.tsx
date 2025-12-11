@@ -24,9 +24,10 @@ interface RankingChartProps {
   startDate?: Date;
   endDate?: Date;
   type: 'quantity' | 'sales';
+  startRank?: number;
 }
 
-export default function RankingChart({ data, valueLabel, valueFormat, shop, startDate, endDate, type }: RankingChartProps) {
+export default function RankingChart({ data, valueLabel, valueFormat, shop, startDate, endDate, type, startRank = 1 }: RankingChartProps) {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   // 柱子颜色：前三名特殊颜色
@@ -84,12 +85,11 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
   });
 
   // 格式化数据用于图表
-  const chartData = data.map(item => ({
+  const chartData = data.map((item, index) => ({
     name: item.goodsName,
     goodsName: item.goodsName,
-    goodsSpec: item.goodsSpec,
     value: getValue(item),
-    rank: item.rank,
+    rank: startRank + index,
     percentage: item.percentage,
   }));
 
@@ -107,7 +107,6 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
         <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-4">
           <p className="font-semibold text-gray-900">排名: #{data.rank}</p>
           <p className="text-gray-700">{data.goodsName}</p>
-          <p className="text-gray-600 text-sm">{data.goodsSpec}</p>
           <p className="text-blue-600 font-semibold mt-1">
             {valueLabel}: {valueFormat(data.value)}
           </p>

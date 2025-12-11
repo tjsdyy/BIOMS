@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       salesperson,
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
-      limit: limit ? parseInt(limit) : 20,
+      limit: limit ? parseInt(limit) : undefined, // 不传limit则返回所有数据
     });
 
     return NextResponse.json({ rankings });

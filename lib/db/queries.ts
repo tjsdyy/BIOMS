@@ -47,7 +47,7 @@ export async function getKPIMetrics(params: FilterParams): Promise<KPIMetrics> {
       ${params.startDate ? Prisma.sql`AND so.payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND so.payTime <= ${params.endDate}` : Prisma.empty}
       AND so.status >= 3 AND so.status != 8 AND so.orderType = 1 AND so.orderTypeSub = 0
-      AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553'
+      AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553' AND sog.goodsNum>0    AND sog.goodsBom != 'FY00049'   AND sog.goodsBom != 'FY00017'   AND sog.goodsBom != '6616801'
   `;
 
   const stats = result[0];
@@ -64,8 +64,6 @@ export async function getKPIMetrics(params: FilterParams): Promise<KPIMetrics> {
 export async function getProductRankingByQuantity(
   params: FilterParams & { limit?: number }
 ): Promise<RankingItem[]> {
-  const limit = params.limit || 20;
-
   const results = await prisma.$queryRaw<Array<{
     goodsName: string;
     goodsSpec: string;
@@ -83,10 +81,10 @@ export async function getProductRankingByQuantity(
       ${params.startDate ? Prisma.sql`AND so.payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND so.payTime <= ${params.endDate}` : Prisma.empty}
       AND so.status >= 3 AND so.status != 8 AND so.orderType = 1 AND so.orderTypeSub = 0
-      AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553'
+      AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553' AND sog.goodsNum>0    AND sog.goodsBom != 'FY00049'   AND sog.goodsBom != 'FY00017'   AND sog.goodsBom != '6616801'
     GROUP BY sog.goodsName, sog.goodsSpec
     ORDER BY quantity DESC
-    LIMIT ${limit}
+    ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
 
   // 计算总量用于百分比
@@ -105,8 +103,6 @@ export async function getProductRankingByQuantity(
 export async function getProductRankingBySales(
   params: FilterParams & { limit?: number }
 ): Promise<RankingItem[]> {
-  const limit = params.limit || 20;
-
   const results = await prisma.$queryRaw<Array<{
     goodsName: string;
     goodsSpec: string;
@@ -124,10 +120,10 @@ export async function getProductRankingBySales(
       ${params.startDate ? Prisma.sql`AND so.payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND so.payTime <= ${params.endDate}` : Prisma.empty}
       AND so.status >= 3 AND so.status != 8 AND so.orderType = 1 AND so.orderTypeSub = 0
-      AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553'
+      AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553' AND sog.goodsNum>0    AND sog.goodsBom != 'FY00049'   AND sog.goodsBom != 'FY00017'   AND sog.goodsBom != '6616801'
     GROUP BY sog.goodsName, sog.goodsSpec
     ORDER BY salesAmount DESC
-    LIMIT ${limit}
+    ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
 
   // 计算总额用于百分比
@@ -172,7 +168,7 @@ export async function getProductDetail(params: {
         ${startDate ? Prisma.sql`AND so.payTime >= ${startDate}` : Prisma.empty}
         ${endDate ? Prisma.sql`AND so.payTime <= ${endDate}` : Prisma.empty}
         AND so.status >= 3 AND so.status != 8 AND so.orderType = 1 AND so.orderTypeSub = 0
-        AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553'
+        AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553' AND sog.goodsNum>0    AND sog.goodsBom != 'FY00049'   AND sog.goodsBom != 'FY00017'   AND sog.goodsBom != '6616801'
       GROUP BY sp.userName
       ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
     `;
@@ -202,7 +198,7 @@ export async function getProductDetail(params: {
           ${startDate ? Prisma.sql`AND so.payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND so.payTime <= ${endDate}` : Prisma.empty}
           AND so.status >= 3 AND so.status != 8 AND so.orderType = 1 AND so.orderTypeSub = 0
-          AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553'
+          AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553' AND sog.goodsNum>0    AND sog.goodsBom != 'FY00049'   AND sog.goodsBom != 'FY00017'   AND sog.goodsBom != '6616801'
         GROUP BY sp.userName
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
@@ -230,7 +226,7 @@ export async function getProductDetail(params: {
           ${startDate ? Prisma.sql`AND so.payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND so.payTime <= ${endDate}` : Prisma.empty}
           AND so.status >= 3 AND so.status != 8 AND so.orderType = 1 AND so.orderTypeSub = 0
-          AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553'
+          AND sog.goodsBom != 'dingjin' AND sog.goodsBom != '0500553' AND sog.goodsNum>0    AND sog.goodsBom != 'FY00049'   AND sog.goodsBom != 'FY00017'   AND sog.goodsBom != '6616801'
         GROUP BY so.shop, ue.name
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;

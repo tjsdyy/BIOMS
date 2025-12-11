@@ -85,7 +85,7 @@ export default function ReportPage() {
 
         {/* 销量排行榜 */}
         <RankingSection
-          title="商品销售数量排行榜 TOP 20"
+          title="商品销售数量排行榜"
           data={quantityData || []}
           isLoading={quantityLoading}
           valueLabel="销量"
@@ -98,7 +98,7 @@ export default function ReportPage() {
 
         {/* 销售额排行榜 */}
         <RankingSection
-          title="商品销售金额排行榜 TOP 20"
+          title="商品销售金额排行榜"
           data={salesData || []}
           isLoading={salesLoading}
           valueLabel="销售额"

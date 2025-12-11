@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '@tremor/react';
 import ViewToggle from '@/components/ui/ViewToggle';
+import RangeFilter from '@/components/ui/RangeFilter';
 import RankingTable from './RankingTable';
 import RankingChart from './RankingChart';
 import { RankingItem } from '@/types/report';
@@ -31,6 +32,13 @@ export default function RankingSection({
   type,
 }: RankingSectionProps) {
   const [viewMode, setViewMode] = useState<'table' | 'chart'>('chart');
+  const [selectedRange, setSelectedRange] = useState({ start: 1, end: 20 });
+
+  // 根据选择的范围过滤数据
+  const filteredData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    return data.slice(selectedRange.start - 1, selectedRange.end);
+  }, [data, selectedRange]);
 
   return (
     <Card className="p-6">
@@ -45,24 +53,44 @@ export default function RankingSection({
         </div>
       ) : (
         <>
-          {viewMode === 'table' && (
-            <RankingTable
-              data={data}
-              valueLabel={valueLabel}
-              valueFormat={valueFormat}
-            />
+          {/* 数据调试信息 */}
+          {data.length > 0 && (
+            <div className="mb-4 text-sm text-gray-600">
+              数据总数: {data.length} 条
+            </div>
           )}
-          {viewMode === 'chart' && (
-            <RankingChart
-              data={data}
-              valueLabel={valueLabel}
-              valueFormat={valueFormat}
-              shop={shop}
-              startDate={startDate}
-              endDate={endDate}
-              type={type}
-            />
-          )}
+
+          {/* 分页筛选器 */}
+          <RangeFilter
+            totalCount={data.length}
+            selectedRange={selectedRange}
+            onChange={setSelectedRange}
+            pageSize={20}
+          />
+
+          {/* 表格或图表展示 */}
+          <div className="mt-6">
+            {viewMode === 'table' && (
+              <RankingTable
+                data={filteredData}
+                valueLabel={valueLabel}
+                valueFormat={valueFormat}
+                startRank={selectedRange.start}
+              />
+            )}
+            {viewMode === 'chart' && (
+              <RankingChart
+                data={filteredData}
+                valueLabel={valueLabel}
+                valueFormat={valueFormat}
+                shop={shop}
+                startDate={startDate}
+                endDate={endDate}
+                type={type}
+                startRank={selectedRange.start}
+              />
+            )}
+          </div>
         </>
       )}
     </Card>
