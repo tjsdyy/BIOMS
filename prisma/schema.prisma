@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ShopOrder {
+  orderSn      String   @id
+  shop         String
+  doneSales1   String
+  payTime      DateTime?
+  status       Int
+  orderType    Int
+  orderTypeSub Int
+  goods        ShopOrderGoods[]
+
+  @@index([shop])
+  @@index([doneSales1])
+  @@index([payTime])
+  @@index([status])
+  @@index([orderType])
+  @@index([orderTypeSub])
+  @@index([shop, doneSales1, payTime])
+  @@map("shop_order")
+}
+
+model ShopOrderGoods {
+  id          Int      @id @default(autoincrement())
+  orderSn     String
+  goodsBom    String
+  goodsName   String
+  goodsSpec   String
+  goodsNum    Int
+  goodsPrice  Decimal  @db.Decimal(10, 2)
+  order       ShopOrder @relation(fields: [orderSn], references: [orderSn])
+
+  @@index([orderSn])
+  @@index([goodsName])
+  @@map("shop_order_goods")
+}
+
+model UbiggerEnum {
+  id        Int     @id @default(autoincrement())
+  enumName  String
+  name      String
+  value     String
+  invoice   String?
+
+  @@index([enumName])
+  @@map("ubigger_enum")
+}
+
+model SalesPerson {
+  id         Int       @id @default(autoincrement())
+  userId     String
+  userName   String
+  shop       String
+  enable     Int       @default(1)
+  leaveDate  DateTime?
+
+  @@index([enable])
+  @@index([shop])
+  @@map("sales_person")
+}
