@@ -228,14 +228,15 @@ export async function getProductDetail(params: {
           v.shop,
           SUM(v.goodsNum) as quantity,
           SUM(v.goodsNum * v.goodsPrice) as salesAmount,
-          MAX(CASE WHEN d.goodsBom IS NOT NULL THEN 1 ELSE 0 END) as hasDisplay
+          MAX(CASE WHEN d.goodsName IS NOT NULL THEN 1 ELSE 0 END) as hasDisplay
         FROM report.fur_sell_order_goods v
         LEFT JOIN (
-          SELECT DISTINCT a.bom as goodsBom, b.shopId as shop
+          SELECT DISTINCT c.name as goodsName, b.shopId as shop
           FROM fnjinew2.stock_goods a
           INNER JOIN fnjinew2.stock_type b ON a.storeBom = b.bom
+          INNER JOIN fnjinew2.shop_product_sku c ON c.bom = a.bom
           WHERE a.storeNum > 0 AND b.name LIKE '%摆场%'
-        ) d ON v.goodsBom = d.goodsBom AND v.shop = d.shop
+        ) d ON v.goodsName = d.goodsName AND v.shop = d.shop
         WHERE v.goodsName = ${goodsName}
           ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
