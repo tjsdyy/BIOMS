@@ -30,7 +30,7 @@ export async function getSalespeople(params?: {
       ${params?.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
       ${params?.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params?.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
       AND goodsNum > 0
     ORDER BY doneSales1Name ASC
   `;
@@ -56,7 +56,7 @@ export async function getKPIMetrics(params: FilterParams): Promise<KPIMetrics> {
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
       AND goodsNum > 0
   `;
 
@@ -89,7 +89,7 @@ export async function getProductRankingByQuantity(
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
       AND goodsNum > 0
     GROUP BY goodsName
     ORDER BY quantity DESC
@@ -127,7 +127,7 @@ export async function getProductRankingBySales(
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
       AND goodsNum > 0
     GROUP BY goodsName
     ORDER BY salesAmount DESC
@@ -173,7 +173,7 @@ export async function getProductDetail(params: {
         AND shopName = ${shop}
         ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
         ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-        AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+        AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
         AND goodsNum > 0
         AND doneSales1Name IS NOT NULL
       GROUP BY doneSales1Name
@@ -202,7 +202,7 @@ export async function getProductDetail(params: {
         WHERE goodsName = ${goodsName}
           ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
           AND goodsNum > 0
           AND doneSales1Name IS NOT NULL
         GROUP BY doneSales1Name
@@ -229,7 +229,7 @@ export async function getProductDetail(params: {
         WHERE goodsName = ${goodsName}
           ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%' 
           AND goodsNum > 0
           AND shopName IS NOT NULL
         GROUP BY shopName
