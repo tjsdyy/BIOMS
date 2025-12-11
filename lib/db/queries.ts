@@ -236,7 +236,7 @@ export async function getProductDetail(params: {
           INNER JOIN fnjinew2.stock_type b ON a.storeBom = b.bom
           INNER JOIN fnjinew2.shop_product_sku c ON c.bom = a.bom
           WHERE a.storeNum > 0 AND b.name LIKE '%摆场%'
-        ) d ON v.goodsNameSpu = d.goodsName AND v.shop = d.shop
+        ) d ON v.goodsName = d.goodsName AND v.shop = d.shop
         WHERE v.goodsNameSpu = ${goodsNameSpu}
           ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
