@@ -1,8 +1,8 @@
 'use client';
 
 import { Dialog, Transition, Tab } from '@headlessui/react';
-import { Fragment, useMemo } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { Fragment, useMemo, useState } from 'react';
+import { XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { isAdmin } from '@/lib/auth/permissions';
 
 interface ProductDetail {
@@ -13,6 +13,9 @@ interface ProductDetail {
   shopTotalSales?: number;
   personTotalSales?: number;
   rank?: number;  // 全局排名
+  shopName?: string;  // 销售员所在门店
+  companyTotalSales?: number;  // 公司总销售额
+  weightedAmount?: number;  // 加权金额
 }
 
 interface ProductDetailModalProps {
@@ -58,6 +61,9 @@ function getRankColor(rank: number, isShopView: boolean = false) {
   return colors[colorIndex];
 }
 
+type SortField = 'rank' | 'name' | 'quantity' | 'salesAmount' | 'weightedAmount' | 'percentage' | 'totalPercentage';
+type SortDirection = 'asc' | 'desc';
+
 export default function ProductDetailModal({
   isOpen,
   onClose,
@@ -68,6 +74,12 @@ export default function ProductDetailModal({
   type,
   isLoading,
 }: ProductDetailModalProps) {
+  // 排序状态 - 为门店和销售员分别维护
+  const [shopSortField, setShopSortField] = useState<SortField>('rank');
+  const [shopSortDirection, setShopSortDirection] = useState<SortDirection>('asc');
+  const [salespersonSortField, setSalespersonSortField] = useState<SortField>('rank');
+  const [salespersonSortDirection, setSalespersonSortDirection] = useState<SortDirection>('asc');
+
   // 获取用户信息并判断是否为管理员
   const userIsAdmin = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -82,6 +94,12 @@ export default function ProductDetailModal({
   }, []);
 
   const renderTable = (details: ProductDetail[], title: string, showDisplayColumn = false, isShopView = false) => {
+    // 获取当前表格的排序状态
+    const sortField = isShopView ? shopSortField : salespersonSortField;
+    const sortDirection = isShopView ? shopSortDirection : salespersonSortDirection;
+    const setSortField = isShopView ? setShopSortField : setSalespersonSortField;
+    const setSortDirection = isShopView ? setShopSortDirection : setSalespersonSortDirection;
+
     // 计算总销售额（用于计算该商品在所有门店/销售员的占比）
     const totalSalesAmount = details.reduce((sum, item) => sum + item.salesAmount, 0);
 
@@ -90,6 +108,73 @@ export default function ProductDetailModal({
       (item.shopTotalSales && item.shopTotalSales > 0) ||
       (item.personTotalSales && item.personTotalSales > 0)
     );
+
+    // 处理排序
+    const handleSort = (field: SortField) => {
+      if (sortField === field) {
+        // 如果点击同一列，切换排序方向
+        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      } else {
+        // 如果点击不同列，设置新列并默认升序
+        setSortField(field);
+        setSortDirection('asc');
+      }
+    };
+
+    // 排序数据
+    const sortedDetails = [...details].sort((a, b) => {
+      let aValue: number | string = 0;
+      let bValue: number | string = 0;
+
+      // 计算比较值
+      if (sortField === 'rank') {
+        aValue = a.rank || 0;
+        bValue = b.rank || 0;
+      } else if (sortField === 'name') {
+        aValue = a.name;
+        bValue = b.name;
+      } else if (sortField === 'quantity') {
+        aValue = a.quantity;
+        bValue = b.quantity;
+      } else if (sortField === 'salesAmount') {
+        aValue = a.salesAmount;
+        bValue = b.salesAmount;
+      } else if (sortField === 'weightedAmount') {
+        aValue = a.weightedAmount || 0;
+        bValue = b.weightedAmount || 0;
+      } else if (sortField === 'percentage') {
+        aValue = totalSalesAmount > 0 ? (a.salesAmount / totalSalesAmount) * 100 : 0;
+        bValue = totalSalesAmount > 0 ? (b.salesAmount / totalSalesAmount) * 100 : 0;
+      } else if (sortField === 'totalPercentage') {
+        const aTotalSales = a.shopTotalSales || a.personTotalSales || 0;
+        const bTotalSales = b.shopTotalSales || b.personTotalSales || 0;
+        aValue = aTotalSales > 0 ? (a.salesAmount / aTotalSales) * 100 : 0;
+        bValue = bTotalSales > 0 ? (b.salesAmount / bTotalSales) * 100 : 0;
+      }
+
+      // 比较逻辑
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc'
+          ? aValue.localeCompare(bValue, 'zh-CN')
+          : bValue.localeCompare(aValue, 'zh-CN');
+      } else {
+        return sortDirection === 'asc'
+          ? (aValue as number) - (bValue as number)
+          : (bValue as number) - (aValue as number);
+      }
+    });
+
+    // 排序图标组件
+    const SortIcon = ({ field }: { field: SortField }) => {
+      if (sortField !== field) {
+        return <div className="w-4 h-4" />; // 占位符
+      }
+      return sortDirection === 'asc' ? (
+        <ChevronUpIcon className="w-4 h-4" />
+      ) : (
+        <ChevronDownIcon className="w-4 h-4" />
+      );
+    };
 
     return (
       <div className="mt-4">
@@ -114,26 +199,73 @@ export default function ProductDetailModal({
           <table className="min-w-full divide-y divide-gray-300">
             <thead className="bg-gray-50">
               <tr>
-                <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">
-                  排名
+                <th
+                  className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('rank')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>排名</span>
+                    <SortIcon field="rank" />
+                  </div>
                 </th>
-                <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                  {title}
+                <th
+                  className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>{title}</span>
+                    <SortIcon field="name" />
+                  </div>
                 </th>
-                <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                  销量
+                <th
+                  className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('quantity')}
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>销量</span>
+                    <SortIcon field="quantity" />
+                  </div>
                 </th>
-                <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                  销售额
+                <th
+                  className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('salesAmount')}
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>销售额</span>
+                    <SortIcon field="salesAmount" />
+                  </div>
                 </th>
                 {!isShopView && userIsAdmin && (
-                  <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                    销售额占比
+                  <th
+                    className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('percentage')}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>销售额占比</span>
+                      <SortIcon field="percentage" />
+                    </div>
+                  </th>
+                )}
+                {!isShopView && (
+                  <th
+                    className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('weightedAmount')}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>加权金额</span>
+                      <SortIcon field="weightedAmount" />
+                    </div>
                   </th>
                 )}
                 {showTotalPercentage && (
-                  <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                    占{title}销售额比
+                  <th
+                    className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('totalPercentage')}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>占{title}销售额比</span>
+                      <SortIcon field="totalPercentage" />
+                    </div>
                   </th>
                 )}
                 {showDisplayColumn && (
@@ -144,7 +276,7 @@ export default function ProductDetailModal({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {details.map((item, index) => {
+              {sortedDetails.map((item, index) => {
                 const percentage = totalSalesAmount > 0 ? (item.salesAmount / totalSalesAmount) * 100 : 0;
 
                 // 计算占门店/销售员总销售额的占比
@@ -176,6 +308,11 @@ export default function ProductDetailModal({
                     {!isShopView && userIsAdmin && (
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-blue-600 font-medium">
                         {percentage.toFixed(2)}%
+                      </td>
+                    )}
+                    {!isShopView && (
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-green-600 font-semibold">
+                        ¥{(item.weightedAmount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
                       </td>
                     )}
                     {showTotalPercentage && (

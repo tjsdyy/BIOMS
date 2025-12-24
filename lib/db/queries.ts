@@ -198,7 +198,68 @@ export async function getProductDetail(params: {
 
   // 根据 groupBy 参数决定按门店还是按销售员统计
   if (groupBy === 'salesperson') {
+      // 首先查询公司总销售额
+      const companyTotalResult = await prisma.$queryRaw<Array<{
+        companyTotalSales: number | null;
+      }>>`
+        SELECT
+          SUM(goodsNum * goodsPrice) as companyTotalSales
+        FROM report.fur_sell_order_goods v
+        WHERE v.goodsNameSpu = ${goodsNameSpu}
+          ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
+          ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
+          AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND goodsBom NOT LIKE 'FY%'
+          AND goodsNum > 0
+      `;
+      const companyTotalSales = Number(companyTotalResult[0]?.companyTotalSales || 0);
+
       // 按销售员统计（查询全部，然后根据权限过滤）
+      // 第一步：从 sales_person 表获取销售员-门店映射
+      const salespersonMainShop = await prisma.$queryRaw<Array<{
+        doneSales1Name: string;
+        mainShopName: string;
+        shopTotalSales: number;
+      }>>`
+        SELECT
+          ue.name as mainShopName,
+          (SELECT sp.userName
+           FROM fnjinew2.sales_person sp
+           WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                 REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(b.salesUserId,'wx',''),'zy',''),'qt',''),'qt',''),'ydg',''),'cf','')
+                 ,'cp',''),'cd',''),'cpxx',''),'zyzs',''),'qh',''),'zs',''),'sy',''),'slt',''),'fz',''),'hz','') ,'zb',''),'gz',''),'xa','') = sp.userId
+           LIMIT 1) as doneSales1Name,
+          COALESCE(shop_totals.shopTotalSales, 0) as shopTotalSales
+        FROM ifnji.member_depart a
+        INNER JOIN ifnji.member_info b ON concat(a.bom, ';') = b.departBom
+        INNER JOIN fnjinew2.ubigger_enum ue ON a.shop = ue.value AND ue.enumName = 'shop'
+        LEFT JOIN (
+          SELECT
+            shopName,
+            SUM(goodsNum * goodsPrice) as shopTotalSales
+          FROM report.fur_sell_order_goods
+          WHERE goodsNameSpu = ${goodsNameSpu}
+            ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
+            ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
+            AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+            AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+            AND goodsBom NOT LIKE 'FY%'
+            AND goodsNum > 0
+          GROUP BY shopName
+        ) shop_totals ON ue.name = shop_totals.shopName
+        WHERE b.salesUserId IS NOT NULL
+      `;
+
+      // 创建销售员 -> 门店映射
+      const salespersonShopMap = new Map(
+        salespersonMainShop.map(item => [item.doneSales1Name, {
+          shopName: item.mainShopName,
+          shopTotalSales: Number(item.shopTotalSales)
+        }])
+      );
+
+      // 第二步：查询销售员的商品销售数据
       const results = await prisma.$queryRaw<Array<{
         doneSales1Name: string;
         quantity: bigint;
@@ -239,15 +300,36 @@ export async function getProductDetail(params: {
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
 
-      // 添加全局排名
-      const allResults = results.map((item, index) => ({
-        name: item.doneSales1Name || '未知销售员',
-        quantity: Number(item.quantity),
-        salesAmount: Number(item.salesAmount),
-        personTotalSales: Number(item.totalSales || 0),
-        rank: index + 1,  // 全局排名
-        hasShopSales: Number(item.hasShopSales) === 1,
-      }));
+      // 添加全局排名和计算加权金额
+      const allResults = results.map((item, index) => {
+        const quantity = Number(item.quantity);
+        const salesAmount = Number(item.salesAmount);
+
+        // 从 Map 中获取销售员的门店信息
+        const shopInfo = salespersonShopMap.get(item.doneSales1Name);
+        const shopName = shopInfo?.shopName || '未知门店';
+        const shopTotalSales = shopInfo?.shopTotalSales || 0;
+
+        // 计算加权金额 = 个人销售额 / (门店销售额/公司销售额) * 个人销售数量
+        // = 个人销售额 * (公司销售额/门店销售额) * 个人销售数量
+        let weightedAmount = 0;
+        if (shopTotalSales > 0 && companyTotalSales > 0) {
+          weightedAmount = salesAmount / (shopTotalSales / companyTotalSales ) * quantity;
+        }
+
+        return {
+          name: item.doneSales1Name || '未知销售员',
+          shopName,
+          quantity,
+          salesAmount,
+          personTotalSales: Number(item.totalSales || 0),
+          shopTotalSales,
+          companyTotalSales,
+          weightedAmount,
+          rank: index + 1,  // 全局排名
+          hasShopSales: Number(item.hasShopSales) === 1,
+        };
+      });
 
       // 如果有shopFilter，过滤出在该门店有业绩的销售员
       if (shopFilter) {
