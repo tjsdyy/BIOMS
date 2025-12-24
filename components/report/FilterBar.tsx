@@ -1,7 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, endOfDay, startOfYear, subMonths } from 'date-fns';
+import { User } from '@/lib/auth/context';
+import { createApiClient } from '@/lib/api/client';
 
 interface FilterBarProps {
   filters: {
@@ -11,29 +14,28 @@ interface FilterBarProps {
     endDate: Date;
   };
   onChange: (filters: any) => void;
+  user: User;
 }
 
-export default function FilterBar({ filters, onChange }: FilterBarProps) {
+export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
+  const apiClient = useMemo(() => createApiClient(user), [user]);
+
   // 获取门店列表
   const { data: shopsData } = useQuery({
-    queryKey: ['shops'],
-    queryFn: async () => {
-      const res = await fetch('/api/filters/shops');
-      return res.json();
-    },
+    queryKey: ['shops', user.id],
+    queryFn: () => apiClient.getShops(),
+    enabled: !!user,
   });
 
   // 获取销售员列表（根据门店和时间范围联动）
   const { data: salespeopleData } = useQuery({
-    queryKey: ['salespeople', filters.shop, filters.startDate, filters.endDate],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filters.shop) params.set('shop', filters.shop);
-      if (filters.startDate) params.set('startDate', filters.startDate.toISOString());
-      if (filters.endDate) params.set('endDate', filters.endDate.toISOString());
-      const res = await fetch(`/api/filters/salespeople?${params}`);
-      return res.json();
-    },
+    queryKey: ['salespeople', filters.shop, filters.startDate, filters.endDate, user.id],
+    queryFn: () => apiClient.getSalespeople({
+      shop: filters.shop || undefined,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+    }),
+    enabled: !!user,
   });
 
   const handleQuickDate = (type: string) => {
@@ -83,7 +85,7 @@ export default function FilterBar({ filters, onChange }: FilterBarProps) {
           >
             <option value="">全部门店</option>
             {shopsData?.shops?.map((shop: { name: string; value: string }) => (
-              <option key={shop.value} value={shop.value}>{shop.name}</option>
+              <option key={shop.value} value={shop.name}>{shop.name}</option>
             ))}
           </select>
         </div>
@@ -136,36 +138,42 @@ export default function FilterBar({ filters, onChange }: FilterBarProps) {
       <div className="flex gap-2 pt-2 flex-wrap">
         <span className="text-sm text-gray-600 self-center">快捷选择:</span>
         <button
+          type="button"
           onClick={() => handleQuickDate('today')}
           className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
         >
           今日
         </button>
         <button
+          type="button"
           onClick={() => handleQuickDate('week')}
           className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
         >
           近7天
         </button>
         <button
+          type="button"
           onClick={() => handleQuickDate('month')}
           className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
         >
           本月
         </button>
         <button
+          type="button"
           onClick={() => handleQuickDate('lastMonth')}
           className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
         >
           上月
         </button>
         <button
+          type="button"
           onClick={() => handleQuickDate('lastLastMonth')}
           className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
         >
           上上月
         </button>
         <button
+          type="button"
           onClick={() => handleQuickDate('year')}
           className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
         >

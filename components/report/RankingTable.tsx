@@ -8,9 +8,10 @@ interface RankingTableProps {
   valueLabel: string;
   valueFormat: (val: number) => string;
   startRank?: number;
+  sortMode?: 'absolute' | 'ratio';
 }
 
-export default function RankingTable({ data, valueLabel, valueFormat, startRank = 1 }: RankingTableProps) {
+export default function RankingTable({ data, valueLabel, valueFormat, startRank = 1, sortMode = 'absolute' }: RankingTableProps) {
   const getRankBadgeColor = (rank: number) => {
     if (rank === 1) return 'yellow';
     if (rank === 2) return 'gray';
@@ -22,6 +23,25 @@ export default function RankingTable({ data, valueLabel, valueFormat, startRank 
     return item.quantity !== undefined ? item.quantity : (item.salesAmount || 0);
   };
 
+  // 获取占比列的动态标签
+  const getRatioColumnLabel = () => {
+    if (typeof window === 'undefined') return '占比';
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return '占比';
+
+    try {
+      const user = JSON.parse(userStr);
+      const isEmployee = user.shopId !== 0 && user.roleIdTotal !== 41;
+
+      if (sortMode === 'ratio') {
+        return isEmployee ? '个人占全公司' : '门店占全公司';
+      }
+      return '占比';
+    } catch {
+      return '占比';
+    }
+  };
+
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -30,7 +50,9 @@ export default function RankingTable({ data, valueLabel, valueFormat, startRank 
             <TableHeaderCell className="text-center w-20">排名</TableHeaderCell>
             <TableHeaderCell className="w-[300px]">商品名称</TableHeaderCell>
             <TableHeaderCell className="text-right">{valueLabel}</TableHeaderCell>
-            <TableHeaderCell className="text-right w-24">占比</TableHeaderCell>
+            <TableHeaderCell className="text-right w-24">
+              {getRatioColumnLabel()}
+            </TableHeaderCell>
             <TableHeaderCell className="w-48">占比可视化</TableHeaderCell>
           </TableRow>
         </TableHead>
@@ -53,14 +75,24 @@ export default function RankingTable({ data, valueLabel, valueFormat, startRank 
                   {valueFormat(getValue(item))}
                 </TableCell>
                 <TableCell className="text-right text-gray-600">
-                  {item.percentage.toFixed(2)}%
+                  {sortMode === 'ratio' && item.shopRatio
+                    ? `${item.shopRatio.toFixed(2)}%`
+                    : `${item.percentage.toFixed(2)}%`
+                  }
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-blue-600 h-2 rounded-full transition-all"
-                        style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                        className={`h-2 rounded-full transition-all ${
+                          sortMode === 'ratio' ? 'bg-purple-600' : 'bg-blue-600'
+                        }`}
+                        style={{
+                          width: `${Math.min(
+                            sortMode === 'ratio' ? (item.shopRatio || 0) : item.percentage,
+                            100
+                          )}%`
+                        }}
                       />
                     </div>
                   </div>

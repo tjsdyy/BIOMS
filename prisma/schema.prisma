@@ -68,3 +68,14 @@ model SalesPerson {
   @@index([shop])
   @@map("sales_person")
 }
+
+model UbiggerAdmRoleUser {
+  id           Int    @id @default(autoincrement())
+  userId       String @unique
+  password     String
+  roleIdTotal  Int?
+  shopId       Int?
+
+  @@index([userId])
+  @@map("ubigger_adm_role_user")
+}

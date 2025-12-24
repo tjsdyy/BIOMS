@@ -21,6 +21,9 @@ export interface RankingItem {
   quantity?: number;
   salesAmount?: number;
   percentage: number;
+  totalQuantity?: number;    // 全局销量（仅店长/店员返回）
+  totalPercentage?: number;  // 全局占比（可选）
+  shopRatio?: number;        // 门店销量占全公司比例（仅店长/店员返回）
 }
 
 export interface RankingResponse {

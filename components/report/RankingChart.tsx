@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -15,6 +16,8 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { RankingItem } from '@/types/report';
 import ProductDetailModal from './ProductDetailModal';
+import { authFetch } from '@/lib/api/auth-fetch';
+import { isEmployee } from '@/lib/auth/permissions';
 
 interface RankingChartProps {
   data: RankingItem[];
@@ -25,11 +28,26 @@ interface RankingChartProps {
   endDate?: Date;
   type: 'quantity' | 'sales';
   startRank?: number;
+  sortMode?: 'absolute' | 'ratio';
 }
 
-export default function RankingChart({ data, valueLabel, valueFormat, shop, startDate, endDate, type, startRank = 1 }: RankingChartProps) {
+export default function RankingChart({ data, valueLabel, valueFormat, shop, startDate, endDate, type, startRank = 1, sortMode = 'absolute' }: RankingChartProps) {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 获取用户信息并判断是否为员工
+  const userIsEmployee = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return false;
+    try {
+      const user = JSON.parse(userStr);
+      return isEmployee(user);
+    } catch {
+      return false;
+    }
+  }, []);
+
   // 柱子颜色：前三名特殊颜色
   const getBarColor = (rank: number) => {
     if (rank === 1) return '#fbbf24'; // 金色
@@ -57,7 +75,7 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
         ...(endDate && { endDate: endDate.toISOString() }),
       });
 
-      const res = await fetch(`/api/report/product-detail?${params}`);
+      const res = await authFetch(`/api/report/product-detail?${params}`);
       return res.json();
     },
     enabled: !!selectedProduct && isModalOpen && !shop,
@@ -78,20 +96,44 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
         ...(endDate && { endDate: endDate.toISOString() }),
       });
 
-      const res = await fetch(`/api/report/product-detail?${params}`);
+      const res = await authFetch(`/api/report/product-detail?${params}`);
       return res.json();
     },
     enabled: !!selectedProduct && isModalOpen,
   });
 
+  // 获取角色信息用于动态文案
+  const getRatioLabel = useMemo(() => {
+    if (typeof window === 'undefined') return '占比 (%)';
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return '占比 (%)';
+
+    try {
+      const user = JSON.parse(userStr);
+      const isAdmin = user.shopId === 0;
+      const isManager = user.roleIdTotal === 41;
+      const isEmployee = !isAdmin && !isManager;
+
+      return isEmployee ? '个人占比 (%)' : '门店占比 (%)';
+    } catch {
+      return '占比 (%)';
+    }
+  }, []);
+
   // 格式化数据用于图表
-  const chartData = data.map((item, index) => ({
-    name: item.goodsName,
-    goodsName: item.goodsName,
-    value: getValue(item),
-    rank: startRank + index,
-    percentage: item.percentage,
-  }));
+  const chartData = useMemo(() => {
+    return data.map((item) => ({
+      name: item.goodsName,
+      goodsName: item.goodsName,
+      // 在占比模式下，bar高度显示全公司销量；否则显示本店销量
+      value: sortMode === 'ratio' ? (item.totalQuantity || 0) : getValue(item),
+      originalValue: getValue(item), // 保留原始销量用于Tooltip
+      totalValue: item.totalQuantity, // 全局数值
+      rank: item.rank, // 使用 item 自带的排名（已经根据 sortMode 重新计算）
+      percentage: item.percentage,
+      shopRatio: item.shopRatio || 0, // 门店占比（用于折线图）
+    }));
+  }, [data, sortMode]);
 
   // 点击柱子事件
   const handleBarClick = (data: any) => {
@@ -103,16 +145,51 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+
+      // 获取角色信息
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      let ratioLabel = '占比';
+      let salesLabel = '销量';
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          const isEmployee = user.shopId !== 0 && user.roleIdTotal !== 41;
+          ratioLabel = isEmployee ? '个人占全公司' : '门店占全公司';
+          salesLabel = isEmployee ? '个人销量' : '本店销量';
+        } catch {}
+      }
+
       return (
         <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-4">
           <p className="font-semibold text-gray-900">排名: #{data.rank}</p>
           <p className="text-gray-700">{data.goodsName}</p>
-          <p className="text-blue-600 font-semibold mt-1">
-            {valueLabel}: {valueFormat(data.value)}
-          </p>
-          <p className="text-gray-600">
-            占比: {data.percentage.toFixed(2)}%
-          </p>
+          {sortMode === 'ratio' ? (
+            <>
+              <p className="text-blue-600 font-semibold mt-1">
+                全公司销量: {data.totalValue?.toLocaleString() || 0}
+              </p>
+              <p className="text-green-600">
+                {salesLabel}: {data.originalValue?.toLocaleString() || 0}
+              </p>
+              <p className="text-purple-600 font-semibold">
+                {ratioLabel}: {data.shopRatio.toFixed(2)}%
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-blue-600 font-semibold mt-1">
+                {valueLabel}: {valueFormat(data.originalValue)}
+              </p>
+              <p className="text-gray-600">
+                范围内占比: {data.percentage.toFixed(2)}%
+              </p>
+              {data.shopRatio > 0 && (
+                <p className="text-purple-600 font-semibold">
+                  {ratioLabel}: {data.shopRatio.toFixed(2)}%
+                </p>
+              )}
+            </>
+          )}
         </div>
       );
     }
@@ -129,11 +206,12 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
 
   return (
     <div className="w-full" style={{ height: '600px' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={chartData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
-        >
+      {chartData.length > 0 ? (
+        <ResponsiveContainer key={`${sortMode}-${chartData[0]?.goodsName || ''}`} width="100%" height="100%">
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 20, right: 60, left: 20, bottom: 100 }}
+          >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             dataKey="goodsName"
@@ -143,45 +221,103 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
             interval={0}
             tick={{ fontSize: 12 }}
           />
+          {/* 左侧Y轴：显示销量 */}
           <YAxis
-            label={{ value: valueLabel, angle: -90, position: 'insideLeft' }}
+            yAxisId="left"
+            label={{
+              value: sortMode === 'ratio' ? '全公司销量' : valueLabel,
+              angle: -90,
+              position: 'insideLeft'
+            }}
             tick={{ fontSize: 12 }}
           />
+          {/* 右侧Y轴：显示占比（仅在占比模式下） */}
+          {sortMode === 'ratio' && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              label={{
+                value: getRatioLabel,
+                angle: 90,
+                position: 'insideRight'
+              }}
+              tick={{ fontSize: 12 }}
+              domain={[0, 100]}
+              tickFormatter={(value) => `${value}%`}
+            />
+          )}
           <Tooltip content={<CustomTooltip />} />
           <Legend
             content={() => (
               <div className="flex justify-center gap-4 mt-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#fbbf24' }} />
-                  <span className="text-sm">第1名</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#9ca3af' }} />
-                  <span className="text-sm">第2名</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#fb923c' }} />
-                  <span className="text-sm">第3名</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#3b82f6' }} />
-                  <span className="text-sm">其他</span>
-                </div>
+                {sortMode === 'ratio' ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#3b82f6' }} />
+                      <span className="text-sm">全公司销量</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#a855f7' }} />
+                      <span className="text-sm">门店占比</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#fbbf24' }} />
+                      <span className="text-sm">第1名</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#9ca3af' }} />
+                      <span className="text-sm">第2名</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#fb923c' }} />
+                      <span className="text-sm">第3名</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#3b82f6' }} />
+                      <span className="text-sm">其他</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           />
+          {/* 柱状图 */}
           <Bar
+            yAxisId="left"
             dataKey="value"
             radius={[8, 8, 0, 0]}
             onClick={handleBarClick}
             cursor="pointer"
           >
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={getBarColor(entry.rank)} />
+              <Cell
+                key={`cell-${index}`}
+                fill={sortMode === 'ratio' ? '#3b82f6' : getBarColor(entry.rank)}
+              />
             ))}
           </Bar>
-        </BarChart>
+          {/* 折线图（仅在占比模式下显示） */}
+          {sortMode === 'ratio' && (
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="shopRatio"
+              stroke="#a855f7"
+              strokeWidth={3}
+              dot={{ r: 4, fill: '#a855f7' }}
+              activeDot={{ r: 6 }}
+            />
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
+      ) : (
+        <div className="text-center py-12 text-gray-500">
+          暂无数据
+        </div>
+      )}
 
       <ProductDetailModal
         isOpen={isModalOpen}
@@ -192,7 +328,7 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
         goodsName={selectedProduct || ''}
         shopDetails={shopDetailData?.details || []}
         salespersonDetails={salespersonDetailData?.details || []}
-        showTabs={!shop}
+        showTabs={!shop && !userIsEmployee}
         type={type}
         isLoading={shopDetailLoading || salespersonDetailLoading}
       />

@@ -1,8 +1,9 @@
 'use client';
 
 import { Dialog, Transition, Tab } from '@headlessui/react';
-import { Fragment } from 'react';
+import { Fragment, useMemo } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { isAdmin } from '@/lib/auth/permissions';
 
 interface ProductDetail {
   name: string;
@@ -11,6 +12,7 @@ interface ProductDetail {
   hasDisplay?: boolean;
   shopTotalSales?: number;
   personTotalSales?: number;
+  rank?: number;  // 全局排名
 }
 
 interface ProductDetailModalProps {
@@ -24,6 +26,38 @@ interface ProductDetailModalProps {
   isLoading: boolean;
 }
 
+// 颜色档位配置 - 销售员（10个一档）
+const RANK_COLORS = [
+  { bg: 'bg-red-100', text: 'text-red-800', name: '第1-10名', emoji: '🔴' },
+  { bg: 'bg-orange-100', text: 'text-orange-800', name: '第11-20名', emoji: '🟠' },
+  { bg: 'bg-yellow-100', text: 'text-yellow-800', name: '第21-30名', emoji: '🟡' },
+  { bg: 'bg-green-100', text: 'text-green-800', name: '第31-40名', emoji: '🟢' },
+  { bg: 'bg-cyan-100', text: 'text-cyan-800', name: '第41-50名', emoji: '🔵' },
+  { bg: 'bg-blue-100', text: 'text-blue-800', name: '第51-60名', emoji: '🔷' },
+  { bg: 'bg-purple-100', text: 'text-purple-800', name: '第61-70名', emoji: '🟣' },
+];
+
+// 颜色档位配置 - 门店（2个一档）
+const SHOP_RANK_COLORS = [
+  { bg: 'bg-red-100', text: 'text-red-800', name: '第1-2名', emoji: '🔴' },
+  { bg: 'bg-orange-100', text: 'text-orange-800', name: '第3-4名', emoji: '🟠' },
+  { bg: 'bg-yellow-100', text: 'text-yellow-800', name: '第5-6名', emoji: '🟡' },
+  { bg: 'bg-green-100', text: 'text-green-800', name: '第7-8名', emoji: '🟢' },
+  { bg: 'bg-cyan-100', text: 'text-cyan-800', name: '第9-10名', emoji: '🔵' },
+  { bg: 'bg-blue-100', text: 'text-blue-800', name: '第11-12名', emoji: '🔷' },
+  { bg: 'bg-purple-100', text: 'text-purple-800', name: '第13-14名', emoji: '🟣' },
+];
+
+function getRankColor(rank: number, isShopView: boolean = false) {
+  const colors = isShopView ? SHOP_RANK_COLORS : RANK_COLORS;
+  const divisor = isShopView ? 2 : 10; // 门店2个一档，销售员10个一档
+  const colorIndex = Math.floor((rank - 1) / divisor);
+  if (colorIndex >= colors.length) {
+    return { bg: 'bg-gray-100', text: 'text-gray-600', emoji: '⚪' };
+  }
+  return colors[colorIndex];
+}
+
 export default function ProductDetailModal({
   isOpen,
   onClose,
@@ -34,7 +68,20 @@ export default function ProductDetailModal({
   type,
   isLoading,
 }: ProductDetailModalProps) {
-  const renderTable = (details: ProductDetail[], title: string, showDisplayColumn = false) => {
+  // 获取用户信息并判断是否为管理员
+  const userIsAdmin = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return false;
+    try {
+      const user = JSON.parse(userStr);
+      return isAdmin(user);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const renderTable = (details: ProductDetail[], title: string, showDisplayColumn = false, isShopView = false) => {
     // 计算总销售额（用于计算该商品在所有门店/销售员的占比）
     const totalSalesAmount = details.reduce((sum, item) => sum + item.salesAmount, 0);
 
@@ -46,6 +93,23 @@ export default function ProductDetailModal({
 
     return (
       <div className="mt-4">
+        {/* 颜色图例 */}
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+          <p className="text-sm font-semibold text-gray-700 mb-2">排名颜色说明：</p>
+          <div className="flex flex-wrap gap-3">
+            {(isShopView ? SHOP_RANK_COLORS : RANK_COLORS).map((color, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <span className="text-lg">{color.emoji}</span>
+                <span className="text-xs text-gray-600">{color.name}</span>
+              </div>
+            ))}
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚪</span>
+              <span className="text-xs text-gray-600">第{isShopView ? '15' : '71'}名及以后</span>
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
           <table className="min-w-full divide-y divide-gray-300">
             <thead className="bg-gray-50">
@@ -62,9 +126,11 @@ export default function ProductDetailModal({
                 <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
                   销售额
                 </th>
-                <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                  销售额占比
-                </th>
+                {!isShopView && userIsAdmin && (
+                  <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+                    销售额占比
+                  </th>
+                )}
                 {showTotalPercentage && (
                   <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
                     占{title}销售额比
@@ -85,17 +151,18 @@ export default function ProductDetailModal({
                 const totalSales = item.shopTotalSales || item.personTotalSales || 0;
                 const totalPercentage = totalSales > 0 ? (item.salesAmount / totalSales) * 100 : 0;
 
+                // 使用全局排名，如果没有则使用索引
+                const rank = item.rank || (index + 1);
+                // 获取排名颜色
+                const rankColor = getRankColor(rank, isShopView);
+
                 return (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm">
-                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${
-                        index === 0 ? 'bg-yellow-100 text-yellow-800' :
-                        index === 1 ? 'bg-gray-100 text-gray-800' :
-                        index === 2 ? 'bg-orange-100 text-orange-800' :
-                        'bg-blue-50 text-blue-800'
-                      } font-semibold`}>
-                        {index + 1}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{rankColor.emoji}</span>
+                        <span className="font-semibold text-gray-900">{rank}</span>
+                      </div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">
                       {item.name}
@@ -106,9 +173,11 @@ export default function ProductDetailModal({
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-right font-semibold text-gray-900">
                       ¥{item.salesAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-blue-600 font-medium">
-                      {percentage.toFixed(2)}%
-                    </td>
+                    {!isShopView && userIsAdmin && (
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-blue-600 font-medium">
+                        {percentage.toFixed(2)}%
+                      </td>
+                    )}
                     {showTotalPercentage && (
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-purple-600 font-medium">
                         {totalPercentage.toFixed(2)}%
@@ -221,15 +290,15 @@ export default function ProductDetailModal({
                     </Tab.List>
                     <Tab.Panels className="mt-2">
                       <Tab.Panel>
-                        {renderTable(shopDetails, '门店', true)}
+                        {renderTable(shopDetails, '门店', true, true)}
                       </Tab.Panel>
                       <Tab.Panel>
-                        {renderTable(salespersonDetails, '销售员', false)}
+                        {renderTable(salespersonDetails, '销售员', false, false)}
                       </Tab.Panel>
                     </Tab.Panels>
                   </Tab.Group>
                 ) : (
-                  renderTable(salespersonDetails, '销售员')
+                  renderTable(salespersonDetails, '销售员', false, false)
                 )}
 
                 <div className="mt-6 flex justify-end">

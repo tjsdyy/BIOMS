@@ -1,20 +1,20 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
-export default function Home() {
+interface ProtectedRouteProps {
+  children: React.ReactNode
+}
+
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading) {
-      if (isAuthenticated) {
-        router.push('/report')
-      } else {
-        router.push('/login')
-      }
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login')
     }
   }, [isAuthenticated, isLoading, router])
 
@@ -30,5 +30,11 @@ export default function Home() {
     )
   }
 
-  return null
+  // 如果未认证，不显示内容（等待重定向）
+  if (!isAuthenticated) {
+    return null
+  }
+
+  // 如果已认证，显示受保护的内容
+  return <>{children}</>
 }
