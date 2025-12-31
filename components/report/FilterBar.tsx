@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { startOfMonth, endOfMonth, endOfDay, startOfYear, subMonths } from 'date-fns';
+import { startOfMonth, endOfMonth, endOfDay, subMonths } from 'date-fns';
 import { User } from '@/lib/auth/context';
 import { createApiClient } from '@/lib/api/client';
 
@@ -18,6 +18,7 @@ interface FilterBarProps {
 }
 
 export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
+  const [selectedQuickDate, setSelectedQuickDate] = useState<string>('year');
   const apiClient = useMemo(() => createApiClient(user), [user]);
 
   // 获取门店列表
@@ -39,6 +40,7 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
   });
 
   const handleQuickDate = (type: string) => {
+    setSelectedQuickDate(type);
     const now = new Date();
     const today = endOfDay(now);
 
@@ -63,7 +65,8 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
         onChange({ ...filters, startDate: startOfMonth(lastLastMonth), endDate: endOfMonth(lastLastMonth), salesperson: '' });
         break;
       case 'year':
-        onChange({ ...filters, startDate: startOfYear(now), endDate: endOfDay(now), salesperson: '' });
+        const yearStart = new Date(now.getFullYear(), 0, 1);
+        onChange({ ...filters, startDate: yearStart, endDate: endOfDay(now), salesperson: '' });
         break;
     }
   };
@@ -114,8 +117,11 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
           </label>
           <input
             type="date"
-            value={filters.startDate.toISOString().split('T')[0]}
-            onChange={(e) => onChange({ ...filters, startDate: new Date(e.target.value), salesperson: '' })}
+            value={new Date(filters.startDate.getTime() - filters.startDate.getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+            onChange={(e) => {
+              setSelectedQuickDate('');
+              onChange({ ...filters, startDate: new Date(e.target.value), salesperson: '' });
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
@@ -127,8 +133,11 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
           </label>
           <input
             type="date"
-            value={filters.endDate.toISOString().split('T')[0]}
-            onChange={(e) => onChange({ ...filters, endDate: new Date(e.target.value), salesperson: '' })}
+            value={new Date(filters.endDate.getTime() - filters.endDate.getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+            onChange={(e) => {
+              setSelectedQuickDate('');
+              onChange({ ...filters, endDate: new Date(e.target.value), salesperson: '' });
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
@@ -140,42 +149,66 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
         <button
           type="button"
           onClick={() => handleQuickDate('today')}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            selectedQuickDate === 'today'
+              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+          }`}
         >
           今日
         </button>
         <button
           type="button"
           onClick={() => handleQuickDate('week')}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            selectedQuickDate === 'week'
+              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+          }`}
         >
           近7天
         </button>
         <button
           type="button"
           onClick={() => handleQuickDate('month')}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            selectedQuickDate === 'month'
+              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+          }`}
         >
           本月
         </button>
         <button
           type="button"
           onClick={() => handleQuickDate('lastMonth')}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            selectedQuickDate === 'lastMonth'
+              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+          }`}
         >
           上月
         </button>
         <button
           type="button"
           onClick={() => handleQuickDate('lastLastMonth')}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            selectedQuickDate === 'lastLastMonth'
+              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+          }`}
         >
           上上月
         </button>
         <button
           type="button"
           onClick={() => handleQuickDate('year')}
-          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            selectedQuickDate === 'year'
+              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+          }`}
         >
           今年
         </button>

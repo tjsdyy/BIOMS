@@ -88,7 +88,7 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
       const res = await authFetch(`/api/report/product-detail?${params}`);
       return res.json();
     },
-    enabled: !!selectedProduct && isModalOpen && !shop,
+    enabled: !!selectedProduct && isModalOpen,
   });
 
   // 查询商品明细 - 销售员
@@ -337,7 +337,7 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
         goodsName={selectedProduct || ''}
         shopDetails={shopDetailData?.details || []}
         salespersonDetails={salespersonDetailData?.details || []}
-        showTabs={!shop && !userIsEmployee}
+        showTabs={!userIsEmployee}
         type={type}
         isLoading={shopDetailLoading || salespersonDetailLoading}
       />

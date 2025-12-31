@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { startOfMonth, endOfDay } from 'date-fns';
+import { startOfMonth, endOfDay, subMonths } from 'date-fns';
 import { ArrowRightOnRectangleIcon, UserIcon } from '@heroicons/react/24/outline';
 import FilterBar from '@/components/report/FilterBar';
 import KPICards from '@/components/report/KPICards';
@@ -17,7 +17,7 @@ export default function ReportPage() {
   const [filters, setFilters] = useState({
     shop: '',
     salesperson: '',
-    startDate: startOfMonth(new Date()),
+    startDate: startOfMonth(subMonths(new Date(), 1)),
     endDate: endOfDay(new Date()),
   });
 
