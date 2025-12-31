@@ -331,12 +331,27 @@ export async function getProductDetail(params: {
         };
       });
 
+      // 计算基于 weightedAmount 的分档排名
+      const sortedByWeight = [...allResults].sort((a, b) => b.weightedAmount - a.weightedAmount);
+      const rankWeightMap = new Map<string, number>();
+      sortedByWeight.forEach((item, index) => {
+        const weightRank = index + 1;
+        const rankWeight = Math.ceil(weightRank / 10);
+        rankWeightMap.set(item.name, rankWeight);
+      });
+
+      // 将 rankWeight 添加到所有结果中
+      const allResultsWithRankWeight = allResults.map(item => ({
+        ...item,
+        rankWeight: rankWeightMap.get(item.name) || 0,
+      }));
+
       // 如果有shopFilter，过滤出在该门店有业绩的销售员
       if (shopFilter) {
-        return allResults.filter(item => item.hasShopSales);
+        return allResultsWithRankWeight.filter(item => item.hasShopSales);
       }
 
-      return allResults;
+      return allResultsWithRankWeight;
     } else {
       // 按门店统计 - 优化：直接使用 shopName，并判断是否摆场
       const results = await prisma.$queryRaw<Array<{

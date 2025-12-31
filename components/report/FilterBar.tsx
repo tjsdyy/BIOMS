@@ -27,7 +27,7 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
     enabled: !!user,
   });
 
-  // 获取销售员列表（根据门店和时间范围联动）
+  // 获取销售顾问列表（根据门店和时间范围联动）
   const { data: salespeopleData } = useQuery({
     queryKey: ['salespeople', filters.shop, filters.startDate, filters.endDate, user.id],
     queryFn: () => apiClient.getSalespeople({
@@ -90,17 +90,17 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
           </select>
         </div>
 
-        {/* 销售员选择 */}
+        {/* 销售顾问选择 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            销售员
+            销售顾问
           </label>
           <select
             value={filters.salesperson}
             onChange={(e) => onChange({ ...filters, salesperson: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="">全部销售员</option>
+            <option value="">全部销售顾问</option>
             {salespeopleData?.salespeople?.map((person: string) => (
               <option key={person} value={person}>{person}</option>
             ))}

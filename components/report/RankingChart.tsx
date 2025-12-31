@@ -180,9 +180,6 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
               <p className="text-blue-600 font-semibold mt-1">
                 {valueLabel}: {valueFormat(data.originalValue)}
               </p>
-              <p className="text-gray-600">
-                范围内占比: {data.percentage.toFixed(2)}%
-              </p>
               {data.shopRatio > 0 && (
                 <p className="text-purple-600 font-semibold">
                   {ratioLabel}: {data.shopRatio.toFixed(2)}%

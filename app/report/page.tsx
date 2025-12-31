@@ -131,18 +131,6 @@ export default function ReportPage() {
         {/* KPI指标卡片 */}
         <KPICards data={kpiData} isLoading={kpiLoading} />
 
-        {/* 销量排行榜 */}
-        <RankingSection
-          title="商品销售数量排行榜"
-          data={quantityData || []}
-          isLoading={quantityLoading}
-          valueLabel="销量"
-          valueFormat={(val) => val.toLocaleString()}
-          shop={filters.shop}
-          startDate={filters.startDate}
-          endDate={filters.endDate}
-          type="quantity"
-        />
 
         {/* 销售额排行榜 */}
         <RankingSection

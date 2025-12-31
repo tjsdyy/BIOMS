@@ -13,7 +13,8 @@ interface ProductDetail {
   shopTotalSales?: number;
   personTotalSales?: number;
   rank?: number;  // 全局排名
-  shopName?: string;  // 销售员所在门店
+  rankWeight?: number;  // 基于 weightedAmount 的分档排名（10人一档）
+  shopName?: string;  // 销售顾问所在门店
   companyTotalSales?: number;  // 公司总销售额
   weightedAmount?: number;  // 加权金额
 }
@@ -29,36 +30,48 @@ interface ProductDetailModalProps {
   isLoading: boolean;
 }
 
-// 颜色档位配置 - 销售员（10个一档）
+// 颜色档位配置 - 销售顾问（10个一档）
 const RANK_COLORS = [
-  { bg: 'bg-red-100', text: 'text-red-800', name: '第1-10名', emoji: '🔴' },
-  { bg: 'bg-orange-100', text: 'text-orange-800', name: '第11-20名', emoji: '🟠' },
-  { bg: 'bg-yellow-100', text: 'text-yellow-800', name: '第21-30名', emoji: '🟡' },
-  { bg: 'bg-green-100', text: 'text-green-800', name: '第31-40名', emoji: '🟢' },
-  { bg: 'bg-cyan-100', text: 'text-cyan-800', name: '第41-50名', emoji: '🔵' },
-  { bg: 'bg-blue-100', text: 'text-blue-800', name: '第51-60名', emoji: '🔷' },
-  { bg: 'bg-purple-100', text: 'text-purple-800', name: '第61-70名', emoji: '🟣' },
+  { bgStyle: { backgroundColor: 'rgba(255, 0, 0, 0.1)' }, textStyle: { color: 'rgb(200, 0, 0)' }, colorStyle: { backgroundColor: 'rgb(255, 0, 0)' }, name: '第1-10名', emoji: '🔴' },
+  { bgStyle: { backgroundColor: 'rgba(255, 165, 0, 0.1)' }, textStyle: { color: 'rgb(200, 100, 0)' }, colorStyle: { backgroundColor: 'rgb(255, 165, 0)' }, name: '第11-20名', emoji: '🟠' },
+  { bgStyle: { backgroundColor: 'rgba(255, 255, 0, 0.1)' }, textStyle: { color: 'rgb(180, 180, 0)' }, colorStyle: { backgroundColor: 'rgb(255, 255, 0)' }, name: '第21-30名', emoji: '🟡' },
+  { bgStyle: { backgroundColor: 'rgba(0, 128, 0, 0.1)' }, textStyle: { color: 'rgb(0, 100, 0)' }, colorStyle: { backgroundColor: 'rgb(0, 128, 0)' }, name: '第31-40名', emoji: '🟢' },
+  { bgStyle: { backgroundColor: 'rgba(0, 255, 255, 0.1)' }, textStyle: { color: 'rgb(0, 180, 180)' }, colorStyle: { backgroundColor: 'rgb(0, 255, 255)' }, name: '第41-50名', emoji: '🟦' },
+  { bgStyle: { backgroundColor: 'rgba(0, 0, 255, 0.1)' }, textStyle: { color: 'rgb(0, 0, 200)' }, colorStyle: { backgroundColor: 'rgb(0, 0, 255)' }, name: '第51-60名', emoji: '🔵' },
+  { bgStyle: { backgroundColor: 'rgba(128, 0, 128, 0.1)' }, textStyle: { color: 'rgb(100, 0, 100)' }, colorStyle: { backgroundColor: 'rgb(128, 0, 128)' }, name: '第61-70名', emoji: '🟣' },
 ];
 
 // 颜色档位配置 - 门店（2个一档）
 const SHOP_RANK_COLORS = [
-  { bg: 'bg-red-100', text: 'text-red-800', name: '第1-2名', emoji: '🔴' },
-  { bg: 'bg-orange-100', text: 'text-orange-800', name: '第3-4名', emoji: '🟠' },
-  { bg: 'bg-yellow-100', text: 'text-yellow-800', name: '第5-6名', emoji: '🟡' },
-  { bg: 'bg-green-100', text: 'text-green-800', name: '第7-8名', emoji: '🟢' },
-  { bg: 'bg-cyan-100', text: 'text-cyan-800', name: '第9-10名', emoji: '🔵' },
-  { bg: 'bg-blue-100', text: 'text-blue-800', name: '第11-12名', emoji: '🔷' },
-  { bg: 'bg-purple-100', text: 'text-purple-800', name: '第13-14名', emoji: '🟣' },
+  { bgStyle: { backgroundColor: 'rgba(255, 0, 0, 0.1)' }, textStyle: { color: 'rgb(200, 0, 0)' }, colorStyle: { backgroundColor: 'rgb(255, 0, 0)' }, name: '第1-2名', emoji: '🔴' },
+  { bgStyle: { backgroundColor: 'rgba(255, 165, 0, 0.1)' }, textStyle: { color: 'rgb(200, 100, 0)' }, colorStyle: { backgroundColor: 'rgb(255, 165, 0)' }, name: '第3-4名', emoji: '🟠' },
+  { bgStyle: { backgroundColor: 'rgba(255, 255, 0, 0.1)' }, textStyle: { color: 'rgb(180, 180, 0)' }, colorStyle: { backgroundColor: 'rgb(255, 255, 0)' }, name: '第5-6名', emoji: '🟡' },
+  { bgStyle: { backgroundColor: 'rgba(0, 128, 0, 0.1)' }, textStyle: { color: 'rgb(0, 100, 0)' }, colorStyle: { backgroundColor: 'rgb(0, 128, 0)' }, name: '第7-8名', emoji: '🟢' },
+  { bgStyle: { backgroundColor: 'rgba(0, 255, 255, 0.1)' }, textStyle: { color: 'rgb(0, 180, 180)' }, colorStyle: { backgroundColor: 'rgb(0, 255, 255)' }, name: '第9-10名', emoji: '🟦' },
+  { bgStyle: { backgroundColor: 'rgba(0, 0, 255, 0.1)' }, textStyle: { color: 'rgb(0, 0, 200)' }, colorStyle: { backgroundColor: 'rgb(0, 0, 255)' }, name: '第11-12名', emoji: '🔵' },
+  { bgStyle: { backgroundColor: 'rgba(128, 0, 128, 0.1)' }, textStyle: { color: 'rgb(100, 0, 100)' }, colorStyle: { backgroundColor: 'rgb(128, 0, 128)' }, name: '第13-14名', emoji: '🟣' },
 ];
 
 function getRankColor(rank: number, isShopView: boolean = false) {
   const colors = isShopView ? SHOP_RANK_COLORS : RANK_COLORS;
-  const divisor = isShopView ? 2 : 10; // 门店2个一档，销售员10个一档
+  const divisor = isShopView ? 2 : 10; // 门店2个一档，销售顾问10个一档
   const colorIndex = Math.floor((rank - 1) / divisor);
   if (colorIndex >= colors.length) {
-    return { bg: 'bg-gray-100', text: 'text-gray-600', emoji: '⚪' };
+    return { bgStyle: { backgroundColor: 'rgba(200, 200, 200, 0.1)' }, textStyle: { color: 'rgb(120, 120, 120)' }, emoji: '⚪' };
   }
   return colors[colorIndex];
+}
+
+// 根据 rankWeight（加权排名档位）获取颜色
+function getRankWeightColor(rankWeight?: number) {
+  if (!rankWeight) {
+    return { bgStyle: { backgroundColor: 'rgba(200, 200, 200, 0.1)' }, textStyle: { color: 'rgb(120, 120, 120)' }, emoji: '⚪' };
+  }
+  const colorIndex = rankWeight - 1; // rankWeight 已经是档位号（1, 2, 3...），直接用作索引
+  if (colorIndex >= RANK_COLORS.length) {
+    return { bgStyle: { backgroundColor: 'rgba(200, 200, 200, 0.1)' }, textStyle: { color: 'rgb(120, 120, 120)' }, emoji: '⚪' };
+  }
+  return RANK_COLORS[colorIndex];
 }
 
 type SortField = 'rank' | 'name' | 'quantity' | 'salesAmount' | 'weightedAmount' | 'percentage' | 'totalPercentage';
@@ -74,7 +87,7 @@ export default function ProductDetailModal({
   type,
   isLoading,
 }: ProductDetailModalProps) {
-  // 排序状态 - 为门店和销售员分别维护
+  // 排序状态 - 为门店和销售顾问分别维护
   const [shopSortField, setShopSortField] = useState<SortField>('rank');
   const [shopSortDirection, setShopSortDirection] = useState<SortDirection>('asc');
   const [salespersonSortField, setSalespersonSortField] = useState<SortField>('rank');
@@ -100,7 +113,7 @@ export default function ProductDetailModal({
     const setSortField = isShopView ? setShopSortField : setSalespersonSortField;
     const setSortDirection = isShopView ? setShopSortDirection : setSalespersonSortDirection;
 
-    // 计算总销售额（用于计算该商品在所有门店/销售员的占比）
+    // 计算总销售额（用于计算该商品在所有门店/销售顾问的占比）
     const totalSalesAmount = details.reduce((sum, item) => sum + item.salesAmount, 0);
 
     // 判断是否显示个人/门店总销售额占比
@@ -195,52 +208,54 @@ export default function ProductDetailModal({
           </div>
         </div>
 
+
+
         <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
           <table className="min-w-full divide-y divide-gray-300">
             <thead className="bg-gray-50">
               <tr>
                 <th
-                  className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  className="py-3.5 pl-4 pr-3 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
                   onClick={() => handleSort('rank')}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-center gap-1">
                     <span>排名</span>
                     <SortIcon field="rank" />
                   </div>
                 </th>
                 <th
-                  className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
                   onClick={() => handleSort('name')}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-center gap-1">
                     <span>{title}</span>
                     <SortIcon field="name" />
                   </div>
                 </th>
                 <th
-                  className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
                   onClick={() => handleSort('quantity')}
                 >
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-center gap-1">
                     <span>销量</span>
                     <SortIcon field="quantity" />
                   </div>
                 </th>
                 <th
-                  className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
                   onClick={() => handleSort('salesAmount')}
                 >
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-center gap-1">
                     <span>销售额</span>
                     <SortIcon field="salesAmount" />
                   </div>
                 </th>
                 {!isShopView && userIsAdmin && (
                   <th
-                    className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                    className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
                     onClick={() => handleSort('percentage')}
                   >
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-center gap-1">
                       <span>销售额占比</span>
                       <SortIcon field="percentage" />
                     </div>
@@ -248,26 +263,39 @@ export default function ProductDetailModal({
                 )}
                 {!isShopView && (
                   <th
-                    className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                    className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
                     onClick={() => handleSort('weightedAmount')}
                   >
-                    <div className="flex items-center justify-end gap-1">
-                      <span>加权金额</span>
+                    <div className="flex items-center justify-center gap-1">
+                      <span>加权排名档位</span>
                       <SortIcon field="weightedAmount" />
                     </div>
                   </th>
                 )}
                 {showTotalPercentage && (
                   <th
-                    className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                    className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
                     onClick={() => handleSort('totalPercentage')}
                   >
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-center gap-1">
                       <span>占{title}销售额比</span>
                       <SortIcon field="totalPercentage" />
                     </div>
                   </th>
                 )}
+
+				{!isShopView && (
+                  <th
+                    className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('companyTotalSales')}
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>个人总销售额</span>
+                      <SortIcon field="personTotalSales" />
+                    </div>
+                  </th>
+                )}
+
                 {showDisplayColumn && (
                   <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
                     是否摆场
@@ -279,9 +307,19 @@ export default function ProductDetailModal({
               {sortedDetails.map((item, index) => {
                 const percentage = totalSalesAmount > 0 ? (item.salesAmount / totalSalesAmount) * 100 : 0;
 
-                // 计算占门店/销售员总销售额的占比
-                const totalSales = item.shopTotalSales || item.personTotalSales || 0;
-                const totalPercentage = totalSales > 0 ? (item.salesAmount / totalSales) * 100 : 0;
+                // 计算占门店/销售顾问总销售额的占比
+                let totalSales = item.shopTotalSales || item.personTotalSales || 0;
+				if (isShopView) {
+					totalSales = item.companyTotalSales || 0;
+				}else{
+					totalSales = item.personTotalSales || 0;
+				}
+				let totalPercentage = 0;
+				if (isShopView) {
+					totalPercentage = item.shopTotalSales > 0 ? (item.salesAmount / item.shopTotalSales) * 100 : 0;
+				}else{
+					totalPercentage = item.personTotalSales > 0 ? (item.salesAmount / item.personTotalSales) * 100 : 0;
+				}
 
                 // 使用全局排名，如果没有则使用索引
                 const rank = item.rank || (index + 1);
@@ -290,34 +328,46 @@ export default function ProductDetailModal({
 
                 return (
                   <tr key={index} className="hover:bg-gray-50">
-                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm">
-                      <div className="flex items-center gap-2">
+                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-center">
+                      <div className="flex items-center justify-center">
                         <span className="text-lg">{rankColor.emoji}</span>
-                        <span className="font-semibold text-gray-900">{rank}</span>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">
+                    <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-center text-gray-900">
                       {item.name}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-gray-700">
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
                       {item.quantity.toLocaleString()}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-right font-semibold text-gray-900">
-                      ¥{item.salesAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-center font-semibold text-gray-900">
+                      ¥{item.salesAmount.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
                     </td>
                     {!isShopView && userIsAdmin && (
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-blue-600 font-medium">
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-blue-600 font-medium">
                         {percentage.toFixed(2)}%
                       </td>
                     )}
                     {!isShopView && (
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-green-600 font-semibold">
-                        ¥{(item.weightedAmount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
+                        {(() => {
+                          const rankWeightColor = getRankWeightColor(item.rankWeight);
+                          return (
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-lg">{rankWeightColor.emoji}</span>
+                            </div>
+                          );
+                        })()}
                       </td>
                     )}
                     {showTotalPercentage && (
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-right text-purple-600 font-medium">
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-purple-600 font-medium">
                         {totalPercentage.toFixed(2)}%
+                      </td>
+                    )}
+
+					{!isShopView && (
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-purple-600 font-medium">
+                        {item.personTotalSales.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
                       </td>
                     )}
                     {showDisplayColumn && (
@@ -371,7 +421,7 @@ export default function ProductDetailModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <Dialog.Title
@@ -422,7 +472,7 @@ export default function ProductDetailModal({
                           }`
                         }
                       >
-                        销售员排行
+                        销售顾问排行
                       </Tab>
                     </Tab.List>
                     <Tab.Panels className="mt-2">
@@ -430,12 +480,12 @@ export default function ProductDetailModal({
                         {renderTable(shopDetails, '门店', true, true)}
                       </Tab.Panel>
                       <Tab.Panel>
-                        {renderTable(salespersonDetails, '销售员', false, false)}
+                        {renderTable(salespersonDetails, '销售顾问', false, false)}
                       </Tab.Panel>
                     </Tab.Panels>
                   </Tab.Group>
                 ) : (
-                  renderTable(salespersonDetails, '销售员', false, false)
+                  renderTable(salespersonDetails, '销售顾问', false, false)
                 )}
 
                 <div className="mt-6 flex justify-end">
