@@ -308,17 +308,13 @@ export default function ProductDetailModal({
                 const percentage = totalSalesAmount > 0 ? (item.salesAmount / totalSalesAmount) * 100 : 0;
 
                 // 计算占门店/销售顾问总销售额的占比
-                let totalSales = item.shopTotalSales || item.personTotalSales || 0;
-				if (isShopView) {
-					totalSales = item.companyTotalSales || 0;
-				}else{
-					totalSales = item.personTotalSales || 0;
-				}
 				let totalPercentage = 0;
 				if (isShopView) {
-					totalPercentage = item.shopTotalSales > 0 ? (item.salesAmount / item.shopTotalSales) * 100 : 0;
+					const shopTotalSales = item.shopTotalSales ?? 0;
+					totalPercentage = shopTotalSales > 0 ? (item.salesAmount / shopTotalSales) * 100 : 0;
 				}else{
-					totalPercentage = item.personTotalSales > 0 ? (item.salesAmount / item.personTotalSales) * 100 : 0;
+					const personTotalSales = item.personTotalSales ?? 0;
+					totalPercentage = personTotalSales > 0 ? (item.salesAmount / personTotalSales) * 100 : 0;
 				}
 
                 // 使用全局排名，如果没有则使用索引
@@ -367,7 +363,7 @@ export default function ProductDetailModal({
 
 					{!isShopView && (
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-purple-600 font-medium">
-                        {item.personTotalSales.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
+                        {(item.personTotalSales ?? 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
                       </td>
                     )}
                     {showDisplayColumn && (
