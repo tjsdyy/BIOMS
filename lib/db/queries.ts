@@ -173,16 +173,69 @@ export async function getProductRankingBySales(
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
 
-  // 计算总额用于百分比
-  const total = results.reduce((sum, item) => sum + item.salesAmount, 0);
+  const resultsTotalCompanySales = await prisma.$queryRaw<Array<{
+    goodsNameSpu: string;
+    goodsSpec: string;
+    salesAmount: number;
+  }>>`
+    SELECT
+      goodsNameSpu,
+      goodsSpec,
+      SUM(goodsNum * goodsPrice) as salesAmount
+    FROM report.fur_sell_order_goods
+    WHERE 1=1
+      ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
+      ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
+      AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
+      AND goodsNum > 0
+    GROUP BY goodsNameSpu
+    ORDER BY salesAmount DESC
+    ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
+  `;
 
-  return results.map((item, index) => ({
+  let resultsTotalCompanySalesRank = resultsTotalCompanySales.map((item, index) => ({
     rank: index + 1,
     goodsName: item.goodsNameSpu,
     goodsSpec: item.goodsSpec,
     salesAmount: item.salesAmount,
-    percentage: total > 0 ? (item.salesAmount / total) * 100 : 0,
   }));
+
+  // 计算总额用于百分比
+  const total = results.reduce((sum, item) => sum + item.salesAmount, 0);
+
+  // 创建公司排名map，按goodsName索引
+  const companyRankMap = new Map<string, number>();
+  resultsTotalCompanySalesRank.forEach(item => {
+    companyRankMap.set(item.goodsName, item.rank);
+  });
+
+  return results.map((item, index) => {
+    const rank = index + 1;
+    const companyRank = companyRankMap.get(item.goodsNameSpu);
+
+    // 确定status：根据排名对比
+    // rank < companyRank → green（排名更靠前）
+    // rank = companyRank → yellow（排名相同）
+    // rank > companyRank → red（排名更靠后）
+    let status: 'red' | 'yellow' | 'green' = 'yellow';
+    if (companyRank !== undefined) {
+      if (rank < companyRank) {
+        status = 'red';
+      } else if (rank > companyRank) {
+        status = 'green';
+      }
+    }
+
+    return {
+      rank,
+      goodsName: item.goodsNameSpu,
+      goodsSpec: item.goodsSpec,
+      salesAmount: item.salesAmount,
+      percentage: total > 0 ? (item.salesAmount / total) * 100 : 0,
+      status,
+    };
+  });
 }
 
 // 6. 获取商品明细 - 优化：使用视图的 doneSales1Name
@@ -229,26 +282,11 @@ export async function getProductDetail(params: {
            WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
                  REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(b.salesUserId,'wx',''),'zy',''),'qt',''),'qt',''),'ydg',''),'cf','')
                  ,'cp',''),'cd',''),'cpxx',''),'zyzs',''),'qh',''),'zs',''),'sy',''),'slt',''),'fz',''),'hz','') ,'zb',''),'gz',''),'xa','') = sp.userId
-           LIMIT 1) as doneSales1Name,
-          COALESCE(shop_totals.shopTotalSales, 0) as shopTotalSales
+           LIMIT 1) as doneSales1Name
         FROM ifnji.member_depart a
         INNER JOIN ifnji.member_info b ON concat(a.bom, ';') = b.departBom
         INNER JOIN fnjinew2.ubigger_enum ue ON a.shop = ue.value AND ue.enumName = 'shop'
-        LEFT JOIN (
-          SELECT
-            shopName,
-            SUM(goodsNum * goodsPrice) as shopTotalSales
-          FROM report.fur_sell_order_goods
-          WHERE goodsNameSpu = ${goodsNameSpu}
-            ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
-            ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-            AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
-            AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
-            AND goodsBom NOT LIKE 'FY%'
-            AND goodsNum > 0
-          GROUP BY shopName
-        ) shop_totals ON ue.name = shop_totals.shopName
-        WHERE b.salesUserId IS NOT NULL
+	  	where b.salesUserId is not null and b.salesUserId != '' 
       `;
 
       // 创建销售员 -> 门店映射
@@ -346,9 +384,14 @@ export async function getProductDetail(params: {
         rankWeight: rankWeightMap.get(item.name) || 0,
       }));
 
-      // 如果有shopFilter，过滤出在该门店有业绩的销售员
+      // 如果有shopFilter，利用 salespersonMainShop 数组筛选对应门店的销售员
       if (shopFilter) {
-        return allResultsWithRankWeight.filter(item => item.hasShopSales);
+        const shopSalespeople = new Set(
+          salespersonMainShop
+            .filter(item => item.mainShopName === shopFilter)
+            .map(item => item.doneSales1Name)
+        );
+        return allResultsWithRankWeight.filter(item => shopSalespeople.has(item.name));
       }
 
       return allResultsWithRankWeight;

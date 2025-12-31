@@ -49,10 +49,20 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
   }, []);
 
   // 柱子颜色：前三名特殊颜色
-  const getBarColor = (rank: number) => {
+  const getBarColor = (entry: any) => {
+	console.log(entry);
+	let status = entry.status;
+	if (status === 'green') return '#008000'; // 绿色
+	if (status === 'yellow') return '#ffa500'; // 黄色
+	if (status === 'red') return '#ff0000'; // 红色
+
+	let rank = entry.rank;
     if (rank === 1) return '#fbbf24'; // 金色
     if (rank === 2) return '#9ca3af'; // 银色
     if (rank === 3) return '#fb923c'; // 铜色
+
+
+
     return '#3b82f6'; // 蓝色
   };
 
@@ -131,6 +141,8 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
       totalValue: item.totalQuantity, // 全局数值
       rank: item.rank, // 使用 item 自带的排名（已经根据 sortMode 重新计算）
       percentage: item.percentage,
+      status: item.status,
+
       shopRatio: item.shopRatio || 0, // 门店占比（用于折线图）
     }));
   }, [data, sortMode]);
@@ -292,7 +304,7 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
             {chartData.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={sortMode === 'ratio' ? '#3b82f6' : getBarColor(entry.rank)}
+                fill={sortMode === 'ratio' ? '#3b82f6' : getBarColor(entry)}
               />
             ))}
           </Bar>
