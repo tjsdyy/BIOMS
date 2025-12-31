@@ -74,7 +74,7 @@ function getRankWeightColor(rankWeight?: number) {
   return RANK_COLORS[colorIndex];
 }
 
-type SortField = 'rank' | 'name' | 'quantity' | 'salesAmount' | 'weightedAmount' | 'percentage' | 'totalPercentage';
+type SortField = 'rank' | 'name' | 'quantity' | 'salesAmount' | 'weightedAmount' | 'percentage' | 'totalPercentage' | 'personTotalSales';
 type SortDirection = 'asc' | 'desc';
 
 export default function ProductDetailModal({
@@ -287,7 +287,7 @@ export default function ProductDetailModal({
 				{!isShopView && (
                   <th
                     className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('companyTotalSales')}
+                    onClick={() => handleSort('personTotalSales')}
                   >
                     <div className="flex items-center justify-center gap-1">
                       <span>个人总销售额</span>
