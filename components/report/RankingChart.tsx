@@ -273,20 +273,16 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
                 ) : (
                   <>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#fbbf24' }} />
-                      <span className="text-sm">第1名</span>
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ff0000' }} />
+                      <span className="text-sm">高于平均</span>	
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#9ca3af' }} />
-                      <span className="text-sm">第2名</span>
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ffa500' }} />
+                      <span className="text-sm">等于平均</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#fb923c' }} />
-                      <span className="text-sm">第3名</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#3b82f6' }} />
-                      <span className="text-sm">其他</span>
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#008000' }} />
+                      <span className="text-sm">低于平均 </span>
                     </div>
                   </>
                 )}

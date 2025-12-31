@@ -62,10 +62,10 @@ export async function getSalespeople(params?: {
     SELECT DISTINCT doneSales1Name
     FROM report.fur_sell_order_goods
     WHERE doneSales1Name IS NOT NULL
-      ${params?.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
+      ${params?.shop ? Prisma.sql`AND shopNameDone = ${params.shop}` : Prisma.empty}
       ${params?.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params?.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
       AND goodsNum > 0
     ORDER BY doneSales1Name ASC
@@ -88,11 +88,11 @@ export async function getKPIMetrics(params: FilterParams): Promise<KPIMetrics> {
       COUNT(DISTINCT goodsNameSpu) as productCount
     FROM report.fur_sell_order_goods
     WHERE 1=1
-      ${params.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
+      ${params.shop ? Prisma.sql`AND shopNameDone = ${params.shop}` : Prisma.empty}
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
       AND goodsNum > 0
   `;
@@ -122,11 +122,11 @@ export async function getProductRankingByQuantity(
       SUM(goodsNum) as quantity
     FROM report.fur_sell_order_goods
     WHERE 1=1
-      ${params.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
+      ${params.shop ? Prisma.sql`AND shopNameDone = ${params.shop}` : Prisma.empty}
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
       AND goodsNum > 0
     GROUP BY goodsNameSpu
@@ -161,11 +161,11 @@ export async function getProductRankingBySales(
       SUM(goodsNum * goodsPrice) as salesAmount
     FROM report.fur_sell_order_goods
     WHERE 1=1
-      ${params.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
+      ${params.shop ? Prisma.sql`AND shopNameDone = ${params.shop}` : Prisma.empty}
       ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
       AND goodsNum > 0
     GROUP BY goodsNameSpu
@@ -186,7 +186,7 @@ export async function getProductRankingBySales(
     WHERE 1=1
       ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
-      AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
       AND goodsNum > 0
     GROUP BY goodsNameSpu
@@ -261,12 +261,32 @@ export async function getProductDetail(params: {
         WHERE v.goodsNameSpu = ${goodsNameSpu}
           ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-          AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+          AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
           AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
           AND goodsBom NOT LIKE 'FY%'
           AND goodsNum > 0
       `;
       const companyTotalSales = Number(companyTotalResult[0]?.companyTotalSales || 0);
+
+
+	  const shopTotalResult = await prisma.$queryRaw<Array<{
+        shopName: string;
+        shopTotalSales: number | null;
+      }>>`
+        SELECT
+		shopNameDone as shopName,
+          SUM(goodsNum * goodsPrice) as shopTotalSales
+        FROM report.fur_sell_order_goods v
+        WHERE v.goodsNameSpu = ${goodsNameSpu}
+          ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
+          ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
+          AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+          AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND goodsBom NOT LIKE 'FY%'
+          AND goodsNum > 0
+		  group by shopNameDone
+      `;
+
 
       // 按销售员统计（查询全部，然后根据权限过滤）
       // 第一步：从 sales_person 表获取销售员-门店映射
@@ -280,8 +300,8 @@ export async function getProductDetail(params: {
           (SELECT sp.userName
            FROM fnjinew2.sales_person sp
            WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                 REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(b.salesUserId,'wx',''),'zy',''),'qt',''),'qt',''),'ydg',''),'cf','')
-                 ,'cp',''),'cd',''),'cpxx',''),'zyzs',''),'qh',''),'zs',''),'sy',''),'slt',''),'fz',''),'hz','') ,'zb',''),'gz',''),'xa','') = sp.userId
+                 REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(b.salesUserId,'wx',''),'zy',''),'qt',''),'qt',''),'ydg',''),'cf','')
+                 ,'cp',''),'cd',''),'cpxx',''),'zyzs',''),'qh',''),'zs',''),'sy',''),'slt',''),'fz',''),'hz','') ,'zb',''),'gz',''),'xa',''),'sh','') = sp.userId
            LIMIT 1) as doneSales1Name
         FROM ifnji.member_depart a
         INNER JOIN ifnji.member_info b ON concat(a.bom, ';') = b.departBom
@@ -293,7 +313,7 @@ export async function getProductDetail(params: {
       const salespersonShopMap = new Map(
         salespersonMainShop.map(item => [item.doneSales1Name, {
           shopName: item.mainShopName,
-          shopTotalSales: Number(item.shopTotalSales)
+          shopTotalSales: shopTotalResult.find(item2 => item2.shopName === item.mainShopName)?.shopTotalSales || 0
         }])
       );
 
@@ -310,7 +330,7 @@ export async function getProductDetail(params: {
           SUM(v.goodsNum) as quantity,
           SUM(v.goodsNum * v.goodsPrice) as salesAmount,
           st.totalSales,
-          ${shopFilter ? Prisma.sql`MAX(CASE WHEN v.shopName = ${shopFilter} THEN 1 ELSE 0 END)` : Prisma.sql`1`} as hasShopSales
+          ${shopFilter ? Prisma.sql`MAX(CASE WHEN v.shopNameDone = ${shopFilter} THEN 1 ELSE 0 END)` : Prisma.sql`1`} as hasShopSales
         FROM report.fur_sell_order_goods v
         LEFT JOIN (
           SELECT
@@ -320,7 +340,7 @@ export async function getProductDetail(params: {
           WHERE 1=1
             ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
             ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-            AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+            AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
             AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
             AND goodsBom NOT LIKE 'FY%'
             AND goodsNum > 0
@@ -329,7 +349,7 @@ export async function getProductDetail(params: {
         WHERE v.goodsNameSpu = ${goodsNameSpu}
           ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
-          AND v.shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+          AND v.shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
           AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
           AND v.goodsBom NOT LIKE 'FY%'
           AND v.goodsNum > 0
@@ -406,8 +426,8 @@ export async function getProductDetail(params: {
         totalSales: number | null;
       }>>`
         SELECT
-          v.shopName,
-          v.shop,
+          v.shopNameDone as shopName,
+          v.shopNameDone,
           SUM(v.goodsNum) as quantity,
           SUM(v.goodsNum * v.goodsPrice) as salesAmount,
           MAX(CASE WHEN d.goodsName IS NOT NULL THEN 1 ELSE 0 END) as hasDisplay,
@@ -415,18 +435,18 @@ export async function getProductDetail(params: {
         FROM report.fur_sell_order_goods v
         LEFT JOIN (
           SELECT
-            shop,
+            shopNameDone,
             SUM(goodsNum * goodsPrice) as totalSales
           FROM report.fur_sell_order_goods
           WHERE 1=1
             ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
             ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
-            AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+            AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
             AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
             AND goodsBom NOT LIKE 'FY%'
             AND goodsNum > 0
-          GROUP BY shop
-        ) st ON v.shop = st.shop
+          GROUP BY shopNameDone
+        ) st ON v.shopNameDone = st.shopNameDone
         LEFT JOIN (
           SELECT DISTINCT c.name as goodsName, b.shopId as shop
           FROM fnjinew2.stock_goods a
@@ -437,12 +457,12 @@ export async function getProductDetail(params: {
         WHERE v.goodsNameSpu = ${goodsNameSpu}
           ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
           ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
-          AND v.shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+          AND v.shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
           AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
           AND v.goodsBom NOT LIKE 'FY%'
           AND v.goodsNum > 0
-          AND v.shopName IS NOT NULL
-        GROUP BY v.shopName, v.shop, st.totalSales
+          AND v.shopNameDone IS NOT NULL and v.doneSales1Name != ''
+        GROUP BY v.shopNameDone, st.totalSales
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
 
