@@ -296,17 +296,8 @@ export async function getProductDetail(params: {
         shopTotalSales: number;
       }>>`
         SELECT
-          ue.name as mainShopName,
-          (SELECT sp.userName
-           FROM fnjinew2.sales_person sp
-           WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                 REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(b.salesUserId,'wx',''),'zy',''),'qt',''),'qt',''),'ydg',''),'cf','')
-                 ,'cp',''),'cd',''),'cpxx',''),'zyzs',''),'qh',''),'zs',''),'sy',''),'slt',''),'fz',''),'hz','') ,'zb',''),'gz',''),'xa',''),'sh','') = sp.userId
-           LIMIT 1) as doneSales1Name
-        FROM ifnji.member_depart a
-        INNER JOIN ifnji.member_info b ON concat(a.bom, ';') = b.departBom
-        INNER JOIN fnjinew2.ubigger_enum ue ON a.shop = ue.value AND ue.enumName = 'shop'
-	  	where b.salesUserId is not null and b.salesUserId != '' 
+          distinct v.shopNameDone as mainShopName,  v.doneSales1Name
+        FROM report.fur_sell_order_goods v
       `;
 
       // 创建销售员 -> 门店映射
