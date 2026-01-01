@@ -18,7 +18,7 @@ interface FilterBarProps {
 }
 
 export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
-  const [selectedQuickDate, setSelectedQuickDate] = useState<string>('year');
+  const [selectedQuickDate, setSelectedQuickDate] = useState<string>('lastYear');
   const apiClient = useMemo(() => createApiClient(user), [user]);
 
   // 获取门店列表
@@ -67,6 +67,11 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
       case 'year':
         const yearStart = new Date(now.getFullYear(), 0, 1);
         onChange({ ...filters, startDate: yearStart, endDate: endOfDay(now), salesperson: '' });
+        break;
+      case 'lastYear':
+        const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
+        const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31);
+        onChange({ ...filters, startDate: lastYearStart, endDate: endOfDay(lastYearEnd), salesperson: '' });
         break;
     }
   };
@@ -211,6 +216,17 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
           }`}
         >
           今年
+        </button>
+        <button
+          type="button"
+          onClick={() => handleQuickDate('lastYear')}
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            selectedQuickDate === 'lastYear'
+              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+          }`}
+        >
+          去年
         </button>
       </div>
     </div>
