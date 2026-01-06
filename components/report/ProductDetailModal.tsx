@@ -93,6 +93,10 @@ export default function ProductDetailModal({
   const [salespersonSortField, setSalespersonSortField] = useState<SortField>('rank');
   const [salespersonSortDirection, setSalespersonSortDirection] = useState<SortDirection>('asc');
 
+  // 门店筛选和tab切换状态
+  const [selectedShop, setSelectedShop] = useState<string>('all');
+  const [selectedTabIndex, setSelectedTabIndex] = useState<number>(0);
+
   // 获取用户信息并判断是否为管理员
   const userIsAdmin = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -106,7 +110,29 @@ export default function ProductDetailModal({
     }
   }, []);
 
-  const renderTable = (details: ProductDetail[], title: string, showDisplayColumn = false, isShopView = false) => {
+  // 获取所有唯一的门店列表
+  const shopList = useMemo(() => {
+    const shops = salespersonDetails
+      .map(item => item.shopName)
+      .filter((name): name is string => !!name);
+    return Array.from(new Set(shops)).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+  }, [salespersonDetails]);
+
+  // 根据选中的门店筛选销售顾问数据
+  const filteredSalespersonDetails = useMemo(() => {
+    if (selectedShop === 'all') {
+      return salespersonDetails;
+    }
+    return salespersonDetails.filter(item => item.shopName === selectedShop);
+  }, [salespersonDetails, selectedShop]);
+
+  // 处理门店单元格点击
+  const handleShopClick = (shopName: string) => {
+    setSelectedShop(shopName);
+    setSelectedTabIndex(1); // 切换到销售顾问排行tab
+  };
+
+  const renderTable = (details: ProductDetail[], title: string, showDisplayColumn = false, isShopView = false, onShopClick?: (shopName: string) => void) => {
     // 获取当前表格的排序状态
     const sortField = isShopView ? shopSortField : salespersonSortField;
     const sortDirection = isShopView ? shopSortDirection : salespersonSortDirection;
@@ -330,7 +356,16 @@ export default function ProductDetailModal({
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-center text-gray-900">
-                      {item.name}
+                      {isShopView && onShopClick ? (
+                        <button
+                          onClick={() => onShopClick(item.name)}
+                          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        >
+                          {item.name}
+                        </button>
+                      ) : (
+                        item.name
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
                       {item.quantity.toLocaleString()}
@@ -444,7 +479,7 @@ export default function ProductDetailModal({
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
                   </div>
                 ) : showTabs ? (
-                  <Tab.Group>
+                  <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
                     <Tab.List className="flex space-x-1 rounded-xl bg-blue-900/20 p-1">
                       <Tab
                         className={({ selected }) =>
@@ -473,10 +508,37 @@ export default function ProductDetailModal({
                     </Tab.List>
                     <Tab.Panels className="mt-2">
                       <Tab.Panel>
-                        {renderTable(shopDetails, '门店', true, true)}
+                        {renderTable(shopDetails, '门店', true, true, handleShopClick)}
                       </Tab.Panel>
                       <Tab.Panel>
-                        {renderTable(salespersonDetails, '销售顾问', false, false)}
+                        {/* 门店筛选下拉框 */}
+                        <div className="mb-4 flex items-center gap-3">
+                          <label htmlFor="shop-filter" className="text-sm font-medium text-gray-700">
+                            门店筛选：
+                          </label>
+                          <select
+                            id="shop-filter"
+                            value={selectedShop}
+                            onChange={(e) => setSelectedShop(e.target.value)}
+                            className="block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                          >
+                            <option value="all">全部门店</option>
+                            {shopList.map((shop) => (
+                              <option key={shop} value={shop}>
+                                {shop}
+                              </option>
+                            ))}
+                          </select>
+                          {selectedShop !== 'all' && (
+                            <button
+                              onClick={() => setSelectedShop('all')}
+                              className="text-sm text-blue-600 hover:text-blue-800 underline"
+                            >
+                              清除筛选
+                            </button>
+                          )}
+                        </div>
+                        {renderTable(filteredSalespersonDetails, '销售顾问', false, false)}
                       </Tab.Panel>
                     </Tab.Panels>
                   </Tab.Group>
