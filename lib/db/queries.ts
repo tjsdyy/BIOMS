@@ -67,7 +67,7 @@ export async function getSalespeople(params?: {
       ${params?.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
       AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
-      AND goodsNum > 0
+      AND goodsNum != 0
     ORDER BY doneSales1Name ASC
   `;
   return results.map(r => r.doneSales1Name);
@@ -94,7 +94,7 @@ export async function getKPIMetrics(params: FilterParams): Promise<KPIMetrics> {
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
       AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
-      AND goodsNum > 0
+      AND goodsNum != 0
   `;
 
   const stats = result[0];
@@ -128,7 +128,7 @@ export async function getProductRankingByQuantity(
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
       AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
-      AND goodsNum > 0
+      AND goodsNum != 0
     GROUP BY goodsNameSpu
     ORDER BY quantity DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
@@ -167,7 +167,7 @@ export async function getProductRankingBySales(
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
       AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
-      AND goodsNum > 0
+      AND goodsNum != 0
     GROUP BY goodsNameSpu
     ORDER BY salesAmount DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
@@ -188,7 +188,7 @@ export async function getProductRankingBySales(
       ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
       AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
       AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
-      AND goodsNum > 0
+      AND goodsNum != 0
     GROUP BY goodsNameSpu
     ORDER BY salesAmount DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
@@ -264,7 +264,7 @@ export async function getProductDetail(params: {
           AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
           AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
           AND goodsBom NOT LIKE 'FY%'
-          AND goodsNum > 0
+          AND goodsNum != 0
       `;
       const companyTotalSales = Number(companyTotalResult[0]?.companyTotalSales || 0);
 
@@ -283,7 +283,7 @@ export async function getProductDetail(params: {
           AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
           AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
           AND goodsBom NOT LIKE 'FY%'
-          AND goodsNum > 0
+          AND goodsNum != 0
 		  group by shopNameDone
       `;
 
@@ -334,7 +334,7 @@ export async function getProductDetail(params: {
             AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
             AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
             AND goodsBom NOT LIKE 'FY%'
-            AND goodsNum > 0
+            AND goodsNum != 0
           GROUP BY doneSales1Name
         ) st ON v.doneSales1Name = st.doneSales1Name
         WHERE v.goodsNameSpu = ${goodsNameSpu}
@@ -435,7 +435,7 @@ export async function getProductDetail(params: {
             AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
             AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
             AND goodsBom NOT LIKE 'FY%'
-            AND goodsNum > 0
+            AND goodsNum != 0
           GROUP BY shopNameDone
         ) st ON v.shopNameDone = st.shopNameDone
         LEFT JOIN (
@@ -498,5 +498,60 @@ export function mergeRankingWithGlobal(
   return restrictedData.map(item => ({
     ...item,
     totalQuantity: globalMap.get(item.goodsName),
+  }));
+}
+
+// 获取产品订单明细
+export async function getProductOrderDetails(params: {
+  goodsName: string;
+  startDate?: Date;
+  endDate?: Date;
+  shopFilter?: string;
+}) {
+  const { goodsName: goodsNameSpu, startDate, endDate, shopFilter } = params;
+
+  const results = await prisma.$queryRaw<Array<{
+    payTime: Date;
+    orderSn: string;
+    doneSales1Name: string;
+    shopNameDone: string;
+    goodsBom: string;
+    goodsName: string;
+    goodsSpec: string;
+    goodsNum: number;
+    goodsPrice: number;
+  }>>`
+    SELECT
+      payTime,
+      orderSn,
+      doneSales1Name,
+      shopNameDone,
+      goodsBom,
+      goodsName,
+      goodsSpec,
+      goodsNum,
+      goodsPrice
+    FROM report.fur_sell_order_goods
+    WHERE goodsNameSpu = ${goodsNameSpu}
+      ${startDate ? Prisma.sql`AND payTime >= ${startDate}` : Prisma.empty}
+      ${endDate ? Prisma.sql`AND payTime <= ${endDate}` : Prisma.empty}
+      ${shopFilter ? Prisma.sql`AND shopNameDone = ${shopFilter}` : Prisma.empty}
+      AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+      AND goodsBom NOT LIKE 'FY%'
+      AND goodsNum != 0
+    ORDER BY payTime DESC
+  `;
+
+  return results.map(item => ({
+    payTime: item.payTime,
+    orderSn: item.orderSn,
+    doneSales1Name: item.doneSales1Name,
+    shopNameDone: item.shopNameDone,
+    goodsBom: item.goodsBom,
+    goodsName: item.goodsName,
+    goodsSpec: item.goodsSpec,
+    goodsNum: Number(item.goodsNum),
+    goodsPrice: Number(item.goodsPrice),
   }));
 }

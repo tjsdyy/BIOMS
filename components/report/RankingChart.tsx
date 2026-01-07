@@ -336,6 +336,9 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
         showTabs={!userIsEmployee}
         type={type}
         isLoading={shopDetailLoading || salespersonDetailLoading}
+        startDate={startDate?.toISOString()}
+        endDate={endDate?.toISOString()}
+        shop={shop}
       />
     </div>
   );

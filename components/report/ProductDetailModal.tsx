@@ -1,9 +1,11 @@
 'use client';
 
 import { Dialog, Transition, Tab } from '@headlessui/react';
-import { Fragment, useMemo, useState } from 'react';
-import { XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { Fragment, useMemo, useState, useEffect, useCallback } from 'react';
+import { XMarkIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { isAdmin } from '@/lib/auth/permissions';
+import { authFetch } from '@/lib/api/auth-fetch';
+import * as XLSX from 'xlsx';
 
 interface ProductDetail {
   name: string;
@@ -19,6 +21,18 @@ interface ProductDetail {
   weightedAmount?: number;  // 加权金额
 }
 
+interface OrderDetail {
+  payTime: Date;
+  orderSn: string;
+  doneSales1Name: string;
+  shopNameDone: string;
+  goodsBom: string;
+  goodsName: string;
+  goodsSpec: string;
+  goodsNum: number;
+  goodsPrice: number;
+}
+
 interface ProductDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,6 +42,9 @@ interface ProductDetailModalProps {
   showTabs: boolean;
   type: 'quantity' | 'sales';
   isLoading: boolean;
+  startDate?: string;
+  endDate?: string;
+  shop?: string;
 }
 
 // 颜色档位配置 - 销售顾问（10个一档）
@@ -86,6 +103,9 @@ export default function ProductDetailModal({
   showTabs,
   type,
   isLoading,
+  startDate,
+  endDate,
+  shop,
 }: ProductDetailModalProps) {
   // 排序状态 - 为门店和销售顾问分别维护
   const [shopSortField, setShopSortField] = useState<SortField>('rank');
@@ -96,6 +116,10 @@ export default function ProductDetailModal({
   // 门店筛选和tab切换状态
   const [selectedShop, setSelectedShop] = useState<string>('all');
   const [selectedTabIndex, setSelectedTabIndex] = useState<number>(0);
+
+  // 订单明细状态
+  const [orderDetails, setOrderDetails] = useState<OrderDetail[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
   // 获取用户信息并判断是否为管理员
   const userIsAdmin = useMemo(() => {
@@ -118,6 +142,36 @@ export default function ProductDetailModal({
     return Array.from(new Set(shops)).sort((a, b) => a.localeCompare(b, 'zh-CN'));
   }, [salespersonDetails]);
 
+  // 获取订单明细数据
+  const fetchOrderDetails = useCallback(async () => {
+    setIsLoadingOrders(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('goodsName', goodsName);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (shop) params.append('shop', shop);
+
+      const response = await authFetch(`/api/report/product-order-details?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch order details');
+      }
+      const data = await response.json();
+      setOrderDetails(data.orderDetails || []);
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+      setOrderDetails([]);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  }, [goodsName, startDate, endDate, shop]);
+
+  useEffect(() => {
+    if (isOpen && selectedTabIndex === 2) {
+      fetchOrderDetails();
+    }
+  }, [isOpen, selectedTabIndex, fetchOrderDetails]);
+
   // 根据选中的门店筛选销售顾问数据
   const filteredSalespersonDetails = useMemo(() => {
     if (selectedShop === 'all') {
@@ -130,6 +184,60 @@ export default function ProductDetailModal({
   const handleShopClick = (shopName: string) => {
     setSelectedShop(shopName);
     setSelectedTabIndex(1); // 切换到销售顾问排行tab
+  };
+
+  // 导出Excel函数
+  const exportToExcel = () => {
+    if (orderDetails.length === 0) {
+      alert('没有数据可以导出');
+      return;
+    }
+
+    // 格式化数据
+    const exportData = orderDetails.map(item => ({
+      '付款时间': new Date(item.payTime).toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }),
+      '订单号': item.orderSn,
+      '销售员': item.doneSales1Name,
+      '门店': item.shopNameDone,
+      '商品编码': item.goodsBom,
+      '商品名称': item.goodsName,
+      '商品规格': item.goodsSpec,
+      '数量': item.goodsNum,
+      '单价': item.goodsPrice,
+      '金额': item.goodsNum * item.goodsPrice,
+    }));
+
+    // 创建工作簿
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '订单明细');
+
+    // 设置列宽
+    const colWidths = [
+      { wch: 20 }, // 付款时间
+      { wch: 20 }, // 订单号
+      { wch: 12 }, // 销售员
+      { wch: 15 }, // 门店
+      { wch: 15 }, // 商品编码
+      { wch: 25 }, // 商品名称
+      { wch: 20 }, // 商品规格
+      { wch: 8 },  // 数量
+      { wch: 10 }, // 单价
+      { wch: 12 }, // 金额
+    ];
+    ws['!cols'] = colWidths;
+
+    // 下载文件
+    const fileName = `${goodsName}-订单明细-${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   const renderTable = (details: ProductDetail[], title: string, showDisplayColumn = false, isShopView = false, onShopClick?: (shopName: string) => void) => {
@@ -505,6 +613,18 @@ export default function ProductDetailModal({
                       >
                         销售顾问排行
                       </Tab>
+                      <Tab
+                        className={({ selected }) =>
+                          `w-full rounded-lg py-2.5 text-sm font-medium leading-5
+                          ${
+                            selected
+                              ? 'bg-white text-blue-700 shadow'
+                              : 'text-blue-600 hover:bg-white/[0.12] hover:text-blue-700'
+                          }`
+                        }
+                      >
+                        订单明细
+                      </Tab>
                     </Tab.List>
                     <Tab.Panels className="mt-2">
                       <Tab.Panel>
@@ -539,6 +659,118 @@ export default function ProductDetailModal({
                           )}
                         </div>
                         {renderTable(filteredSalespersonDetails, '销售顾问', false, false)}
+                      </Tab.Panel>
+                      <Tab.Panel>
+                        {/* 订单明细表格 */}
+                        <div className="mt-4">
+                          <div className="flex justify-between items-center mb-4">
+                            <h4 className="text-sm font-semibold text-gray-700">
+                              共 {orderDetails.length} 条订单记录
+                            </h4>
+                            <button
+                              onClick={exportToExcel}
+                              disabled={orderDetails.length === 0}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            >
+                              <ArrowDownTrayIcon className="w-4 h-4" />
+                              导出Excel
+                            </button>
+                          </div>
+
+                          {isLoadingOrders ? (
+                            <div className="flex justify-center items-center h-64">
+                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+                            </div>
+                          ) : orderDetails.length > 0 ? (
+                            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
+                              <div className="overflow-x-auto max-h-[500px]">
+                                <table className="min-w-full divide-y divide-gray-300">
+                                  <thead className="bg-gray-50 sticky top-0 z-10">
+                                    <tr>
+                                      <th className="py-3.5 pl-4 pr-3 text-center text-sm font-semibold text-gray-900">
+                                        付款时间
+                                      </th>
+                                      <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                                        订单号
+                                      </th>
+                                      <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                                        销售员
+                                      </th>
+                                      <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                                        门店
+                                      </th>
+                                      <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                                        商品编码
+                                      </th>
+                                      <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                                        商品名称
+                                      </th>
+                                      <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                                        商品规格
+                                      </th>
+                                      <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                                        数量
+                                      </th>
+                                      <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                                        单价
+                                      </th>
+                                      <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">
+                                        金额
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200 bg-white">
+                                    {orderDetails.map((order, index) => (
+                                      <tr key={index} className="hover:bg-gray-50">
+                                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-center text-gray-700">
+                                          {new Date(order.payTime).toLocaleString('zh-CN', {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: false
+                                          })}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
+                                          {order.orderSn}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-900 font-medium">
+                                          {order.doneSales1Name}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
+                                          {order.shopNameDone}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
+                                          {order.goodsBom}
+                                        </td>
+                                        <td className="px-3 py-4 text-sm text-center text-gray-900">
+                                          {order.goodsName}
+                                        </td>
+                                        <td className="px-3 py-4 text-sm text-center text-gray-700">
+                                          {order.goodsSpec}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
+                                          {order.goodsNum}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
+                                          ¥{order.goodsPrice.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-4 text-sm text-center font-semibold text-gray-900">
+                                          ¥{(order.goodsNum * order.goodsPrice).toLocaleString('zh-CN', { maximumFractionDigits: 2 })}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-12 text-gray-500">
+                              暂无订单数据
+                            </div>
+                          )}
+                        </div>
                       </Tab.Panel>
                     </Tab.Panels>
                   </Tab.Group>
