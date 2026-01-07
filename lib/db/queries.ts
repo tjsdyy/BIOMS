@@ -42,7 +42,7 @@ export async function getUserNameByUserId(userId: string): Promise<string | null
 	return '蒋卓冉';
 	}
 
-  return results.length > 0 ? results[0].userName : null;
+  return results.length > 0 ? results[0].userName : userId;
 }
 
 // 1. 获取门店列表（从枚举表）- 无需修改
