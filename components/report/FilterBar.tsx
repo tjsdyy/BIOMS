@@ -68,6 +68,10 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
         const lastLastMonth = subMonths(now, 2);
         onChange({ ...filters, startDate: startOfMonth(lastLastMonth), endDate: endOfMonth(lastLastMonth), salesperson: '' });
         break;
+      case 'lastThreeMonths':
+        const threeMonthsAgo = subMonths(now, 3);
+        onChange({ ...filters, startDate: startOfMonth(threeMonthsAgo), endDate: endOfDay(now), salesperson: '' });
+        break;
       case 'year':
         const yearStart = new Date(now.getFullYear(), 0, 1);
         onChange({ ...filters, startDate: yearStart, endDate: endOfDay(now), salesperson: '' });
@@ -162,7 +166,7 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
       <div className="flex gap-2 pt-2 flex-wrap">
         <span className="text-sm text-gray-600 self-center">快捷选择:</span>
         
-        
+
         <button
           type="button"
           onClick={() => handleQuickDate('lastMonth')}
@@ -174,7 +178,19 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
         >
           上月
         </button>
-        
+
+        <button
+          type="button"
+          onClick={() => handleQuickDate('lastThreeMonths')}
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            selectedQuickDate === 'lastThreeMonths'
+              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+          }`}
+        >
+          前三月
+        </button>
+
         <button
           type="button"
           onClick={() => handleQuickDate('year')}
