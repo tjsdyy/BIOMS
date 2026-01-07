@@ -33,7 +33,7 @@ export async function getUserNameByUserId(userId: string): Promise<string | null
   const results = await prisma.$queryRaw<Array<{ userName: string }>>`
     SELECT b.userName
     FROM fnjinew2.sales_person b
-    WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+    WHERE userId='jiangzhuoran' or REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
           REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${userId},'wx',''),'zy',''),'qt',''),'qt',''),'ydg',''),'cf','')
           ,'cp',''),'cd',''),'cpxx',''),'zyzs',''),'qh',''),'zs',''),'sy',''),'slt',''),'fz',''),'hz','') ,'zb',''),'gz',''),'xa','') = b.userId
     LIMIT 1
