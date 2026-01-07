@@ -38,7 +38,7 @@ export async function getUserNameByUserId(userId: string): Promise<string | null
           ,'cp',''),'cd',''),'cpxx',''),'zyzs',''),'qh',''),'zs',''),'sy',''),'slt',''),'fz',''),'hz','') ,'zb',''),'gz',''),'xa','') = b.userId
     LIMIT 1
   `;
-	if(userId='jiangzhuoran'){
+	if(userId=='jiangzhuoran'){
 	return '蒋卓冉';
 	}
 
