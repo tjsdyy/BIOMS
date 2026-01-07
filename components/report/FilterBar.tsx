@@ -161,39 +161,8 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
       {/* 快捷日期选择 */}
       <div className="flex gap-2 pt-2 flex-wrap">
         <span className="text-sm text-gray-600 self-center">快捷选择:</span>
-        <button
-          type="button"
-          onClick={() => handleQuickDate('today')}
-          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-            selectedQuickDate === 'today'
-              ? 'bg-blue-500 hover:bg-blue-600 text-white'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-          }`}
-        >
-          今日
-        </button>
-        <button
-          type="button"
-          onClick={() => handleQuickDate('week')}
-          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-            selectedQuickDate === 'week'
-              ? 'bg-blue-500 hover:bg-blue-600 text-white'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-          }`}
-        >
-          近7天
-        </button>
-        <button
-          type="button"
-          onClick={() => handleQuickDate('month')}
-          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-            selectedQuickDate === 'month'
-              ? 'bg-blue-500 hover:bg-blue-600 text-white'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-          }`}
-        >
-          本月
-        </button>
+        
+        
         <button
           type="button"
           onClick={() => handleQuickDate('lastMonth')}
@@ -205,17 +174,7 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
         >
           上月
         </button>
-        <button
-          type="button"
-          onClick={() => handleQuickDate('lastLastMonth')}
-          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-            selectedQuickDate === 'lastLastMonth'
-              ? 'bg-blue-500 hover:bg-blue-600 text-white'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-          }`}
-        >
-          上上月
-        </button>
+        
         <button
           type="button"
           onClick={() => handleQuickDate('year')}
