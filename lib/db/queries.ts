@@ -289,15 +289,26 @@ export async function getProductDetail(params: {
 
 
       // 按销售员统计（查询全部，然后根据权限过滤）
-      // 第一步：从 sales_person 表获取销售员-门店映射
+      // 第一步：从 sales_person 表获取销售员-门店映射（支持时间筛选）
       const salespersonMainShop = await prisma.$queryRaw<Array<{
         doneSales1Name: string;
         mainShopName: string;
         shopTotalSales: number;
+        salesAmount: number;
       }>>`
         SELECT
-          distinct v.shopNameDone as mainShopName,  v.doneSales1Name
+           v.shopNameDone as mainShopName,  v.doneSales1Name,
+		  SUM(v.goodsNum * v.goodsPrice) as salesAmount
         FROM report.fur_sell_order_goods v
+        WHERE 1=1
+          ${startDate ? Prisma.sql`AND v.payTime >= ${startDate}` : Prisma.empty}
+          ${endDate ? Prisma.sql`AND v.payTime <= ${endDate}` : Prisma.empty}
+          AND v.shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+          AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND v.goodsBom NOT LIKE 'FY%'
+          AND v.goodsNum != 0
+          AND v.doneSales1Name IS NOT NULL and v.doneSales1Name!=''
+		  group by v.shopNameDone, v.doneSales1Name
       `;
 
       // 创建销售员 -> 门店映射
@@ -343,8 +354,8 @@ export async function getProductDetail(params: {
           AND v.shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
           AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
           AND v.goodsBom NOT LIKE 'FY%'
-          AND v.goodsNum > 0
-          AND v.doneSales1Name IS NOT NULL
+          AND v.goodsNum != 0
+          AND v.doneSales1Name IS NOT NULL and v.doneSales1Name!=''
         GROUP BY v.doneSales1Name, st.totalSales
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
@@ -397,12 +408,40 @@ export async function getProductDetail(params: {
 
       // 如果有shopFilter，利用 salespersonMainShop 数组筛选对应门店的销售员
       if (shopFilter) {
-        const shopSalespeople = new Set(
-          salespersonMainShop
-            .filter(item => item.mainShopName === shopFilter)
-            .map(item => item.doneSales1Name)
+        // 获取该门店所有销售员名单
+        const shopSalespeopleList = salespersonMainShop
+          .filter(item => item.mainShopName === shopFilter);
+
+        // 筛选出有销售数据的销售员
+        const filteredResults = allResultsWithRankWeight.filter(item =>
+          shopSalespeopleList.some(sp => sp.doneSales1Name === item.name)
         );
-        return allResultsWithRankWeight.filter(item => shopSalespeople.has(item.name));
+
+        // 找出没有销售数据的销售员（在门店人员名单中但不在结果数组中）
+        const existingSalespeople = new Set(filteredResults.map(item => item.name));
+        const missingSalespeopleData = shopSalespeopleList.filter(sp => !existingSalespeople.has(sp.doneSales1Name));
+
+        // 获取门店总销售额用于计算
+        const shopInfo = salespersonShopMap.get(missingSalespeopleData[0]?.doneSales1Name);
+        const shopTotalSales = shopInfo?.shopTotalSales || 0;
+
+        // 为缺失的销售员创建默认记录（从salespersonMainShop提取salesAmount）
+        const missingRecords = missingSalespeopleData.map(sp => ({
+          name: sp.doneSales1Name,
+          shopName: shopFilter,
+          quantity: 0,
+          salesAmount: 0,
+          personTotalSales: Number(sp.salesAmount || 0),
+          shopTotalSales,
+          companyTotalSales,
+          weightedAmount: 0,
+          rank: 65, // 排名在最后
+          hasShopSales: true,
+          rankWeight: 0,
+        }));
+
+        // 合并有数据的销售员和无数据的销售员
+        return [...filteredResults, ...missingRecords];
       }
 
       return allResultsWithRankWeight;
@@ -451,7 +490,7 @@ export async function getProductDetail(params: {
           AND v.shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
           AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
           AND v.goodsBom NOT LIKE 'FY%'
-          AND v.goodsNum > 0
+          AND v.goodsNum != 0
           AND v.shopNameDone IS NOT NULL and v.doneSales1Name != ''
         GROUP BY v.shopNameDone, st.totalSales
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC

@@ -380,7 +380,7 @@ export default function ProductDetailModal({
                   onClick={() => handleSort('salesAmount')}
                 >
                   <div className="flex items-center justify-center gap-1">
-                    <span>销售额</span>
+                    <span>销售额(目录价)</span>
                     <SortIcon field="salesAmount" />
                   </div>
                 </th>
@@ -424,7 +424,7 @@ export default function ProductDetailModal({
                     onClick={() => handleSort('personTotalSales')}
                   >
                     <div className="flex items-center justify-center gap-1">
-                      <span>个人总销售额</span>
+                      <span>个人总销售额(目录价)</span>
                       <SortIcon field="personTotalSales" />
                     </div>
                   </th>
@@ -613,18 +613,20 @@ export default function ProductDetailModal({
                       >
                         销售顾问排行
                       </Tab>
-                      <Tab
-                        className={({ selected }) =>
-                          `w-full rounded-lg py-2.5 text-sm font-medium leading-5
-                          ${
-                            selected
-                              ? 'bg-white text-blue-700 shadow'
-                              : 'text-blue-600 hover:bg-white/[0.12] hover:text-blue-700'
-                          }`
-                        }
-                      >
-                        订单明细
-                      </Tab>
+                      {userIsAdmin && (
+                        <Tab
+                          className={({ selected }) =>
+                            `w-full rounded-lg py-2.5 text-sm font-medium leading-5
+                            ${
+                              selected
+                                ? 'bg-white text-blue-700 shadow'
+                                : 'text-blue-600 hover:bg-white/[0.12] hover:text-blue-700'
+                            }`
+                          }
+                        >
+                          订单明细
+                        </Tab>
+                      )}
                     </Tab.List>
                     <Tab.Panels className="mt-2">
                       <Tab.Panel>
@@ -660,9 +662,10 @@ export default function ProductDetailModal({
                         </div>
                         {renderTable(filteredSalespersonDetails, '销售顾问', false, false)}
                       </Tab.Panel>
-                      <Tab.Panel>
-                        {/* 订单明细表格 */}
-                        <div className="mt-4">
+                      {userIsAdmin && (
+                        <Tab.Panel>
+                          {/* 订单明细表格 */}
+                          <div className="mt-4">
                           <div className="flex justify-between items-center mb-4">
                             <h4 className="text-sm font-semibold text-gray-700">
                               共 {orderDetails.length} 条订单记录
@@ -772,6 +775,7 @@ export default function ProductDetailModal({
                           )}
                         </div>
                       </Tab.Panel>
+                      )}
                     </Tab.Panels>
                   </Tab.Group>
                 ) : (

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, endOfDay, subMonths } from 'date-fns';
 import { User } from '@/lib/auth/context';
 import { createApiClient } from '@/lib/api/client';
+import { isEmployee } from '@/lib/auth/permissions';
 
 interface FilterBarProps {
   filters: {
@@ -20,6 +21,9 @@ interface FilterBarProps {
 export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
   const [selectedQuickDate, setSelectedQuickDate] = useState<string>('lastYear');
   const apiClient = useMemo(() => createApiClient(user), [user]);
+
+  // 判断是否为销售员角色
+  const isSalesperson = useMemo(() => isEmployee(user), [user]);
 
   // 获取门店列表
   const { data: shopsData } = useQuery({
@@ -89,7 +93,10 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
           <select
             value={filters.shop}
             onChange={(e) => onChange({ ...filters, shop: e.target.value, salesperson: '' })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={isSalesperson}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              isSalesperson ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+            }`}
           >
             <option value="">全部门店</option>
             {shopsData?.shops?.map((shop: { name: string; value: string }) => (
@@ -106,7 +113,10 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
           <select
             value={filters.salesperson}
             onChange={(e) => onChange({ ...filters, salesperson: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={isSalesperson}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              isSalesperson ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+            }`}
           >
             <option value="">全部销售顾问</option>
             {salespeopleData?.salespeople?.map((person: string) => (
