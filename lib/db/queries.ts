@@ -418,8 +418,11 @@ export async function getProductDetail(params: {
         );
 
         // 找出没有销售数据的销售员（在门店人员名单中但不在结果数组中）
+        // 排除 salesAmount < 0 的销售员
         const existingSalespeople = new Set(filteredResults.map(item => item.name));
-        const missingSalespeopleData = shopSalespeopleList.filter(sp => !existingSalespeople.has(sp.doneSales1Name));
+        const missingSalespeopleData = shopSalespeopleList.filter(sp =>
+          !existingSalespeople.has(sp.doneSales1Name) && Number(sp.salesAmount || 0) >= 0
+        );
 
         // 获取门店总销售额用于计算
         const shopInfo = salespersonShopMap.get(missingSalespeopleData[0]?.doneSales1Name);
@@ -444,7 +447,38 @@ export async function getProductDetail(params: {
         return [...filteredResults, ...missingRecords];
       }
 
-      return allResultsWithRankWeight;
+      // 没有shopFilter时，追加所有不在排行榜中的销售员
+      // 找出没有销售该商品的销售员（在公司人员名单中但不在结果数组中）
+      // 排除 salesAmount < 0 的销售员
+      const existingAllSalespeople = new Set(allResultsWithRankWeight.map(item => item.name));
+      const missingAllSalespeopleData = salespersonMainShop.filter(sp =>
+        !existingAllSalespeople.has(sp.doneSales1Name) && Number(sp.salesAmount || 0) >= 0
+      );
+
+      // 为缺失的销售员创建默认记录
+      const missingAllRecords = missingAllSalespeopleData.map(sp => {
+        // 获取该销售员的门店信息
+        const shopInfo = salespersonShopMap.get(sp.doneSales1Name);
+        const shopName = shopInfo?.shopName || '未知门店';
+        const shopTotalSales = shopInfo?.shopTotalSales || 0;
+
+        return {
+          name: sp.doneSales1Name,
+          shopName,
+          quantity: 0,
+          salesAmount: 0,
+          personTotalSales: Number(sp.salesAmount || 0),
+          shopTotalSales,
+          companyTotalSales,
+          weightedAmount: 0,
+          rank: 65, // 排名在最后
+          hasShopSales: true,
+          rankWeight: 0,
+        };
+      });
+
+      // 合并有数据的销售员和无数据的销售员
+      return [...allResultsWithRankWeight, ...missingAllRecords];
     } else {
       // 按门店统计 - 优化：直接使用 shopName，并判断是否摆场
       const results = await prisma.$queryRaw<Array<{

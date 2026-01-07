@@ -169,18 +169,6 @@ export default function FilterBar({ filters, onChange, user }: FilterBarProps) {
 
         <button
           type="button"
-          onClick={() => handleQuickDate('lastMonth')}
-          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-            selectedQuickDate === 'lastMonth'
-              ? 'bg-blue-500 hover:bg-blue-600 text-white'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-          }`}
-        >
-          上月
-        </button>
-
-        <button
-          type="button"
           onClick={() => handleQuickDate('lastThreeMonths')}
           className={`px-3 py-1 text-sm rounded-lg transition-colors ${
             selectedQuickDate === 'lastThreeMonths'
