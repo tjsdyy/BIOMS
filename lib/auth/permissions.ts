@@ -4,6 +4,8 @@ import { getUserNameByUserId } from '../db/queries'
 // 区域经理配置：userId → 可访问的门店ID列表（用于门店列表API）
 export const REGIONAL_MANAGER_SHOP_MAP: Record<string, string[]> = {
   'chenweiwei': ['3', '30'],  // 杭州留和路店, 苏州诚品店
+  'chenweiweicp': ['3', '30'],  // 杭州留和路店, 苏州诚品店
+  'chenweiweihz': ['3', '30'],  // 杭州留和路店, 苏州诚品店
   // 未来可添加更多区域经理，例如：
   // 'zhangsan': ['5', '8', '12'],  // 其他门店
   // 'lisi': ['15', '20'],
@@ -12,6 +14,8 @@ export const REGIONAL_MANAGER_SHOP_MAP: Record<string, string[]> = {
 // 区域经理配置：userId → 可访问的门店名称列表（用于数据查询API）
 export const REGIONAL_MANAGER_SHOP_NAMES_MAP: Record<string, string[]> = {
   'chenweiwei': ['杭州留和路店', '苏州诚品店'],
+  'chenweiweicp': ['杭州留和路店', '苏州诚品店'],
+  'chenweiweihz': ['杭州留和路店', '苏州诚品店'],
   // 未来可添加更多区域经理，例如：
   // 'zhangsan': ['北京店', '上海店', '广州店'],
   // 'lisi': ['深圳店', '成都店'],
