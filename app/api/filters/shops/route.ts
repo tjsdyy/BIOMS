@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getShops } from '@/lib/db/queries';
 import { getUserFromRequest } from '@/lib/auth/api-auth';
-import { isManager, isAdmin } from '@/lib/auth/permissions';
+import { isManager, isAdmin, isRegionalManagerRole, getRegionalManagerShops } from '@/lib/auth/permissions';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,6 +19,21 @@ export async function GET(request: NextRequest) {
       // 管理员可以看到所有门店
       const shops = await getShops();
       return NextResponse.json({ shops });
+
+    } else if (isRegionalManagerRole(user)) {
+      // 区域经理：返回其管理的门店列表
+      const allowedShopIds = getRegionalManagerShops(user.userId);
+
+      if (allowedShopIds.length === 0) {
+        return NextResponse.json({ shops: [] });
+      }
+
+      // 从所有门店中筛选出区域经理可访问的门店
+      const allShops = await getShops();
+      const shops = allShops.filter(shop => allowedShopIds.includes(shop.value));
+
+      return NextResponse.json({ shops });
+
     } else if (isManager(user)) {
       // 店长只能看到自己的门店
       if (!user.shopId) {
@@ -29,7 +44,9 @@ export async function GET(request: NextRequest) {
       const shopIdStr = user.shopId.toString();
       const allShops = await getShops();
       const shops = allShops.filter(shop => shop.value === shopIdStr);
+
       return NextResponse.json({ shops });
+
     } else {
       // 普通员工可以看到所有门店（但数据会受其他权限限制）
       const shops = await getShops();
