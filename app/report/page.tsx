@@ -53,22 +53,6 @@ export default function ReportPage() {
 
   console.log('[ReportPage] KPI查询状态 - enabled:', !!apiClient, 'isLoading:', kpiLoading, 'hasData:', !!kpiData, 'error:', kpiError);
 
-  // 查询销量排行
-  const { data: quantityData, isLoading: quantityLoading } = useQuery({
-    queryKey: ['ranking-quantity', filters, user?.id],
-    queryFn: async () => {
-      if (!apiClient) throw new Error('用户未登录');
-      const result = await apiClient.getQuantityRanking({
-        shop: filters.shop || undefined,
-        salesperson: filters.salesperson || undefined,
-        startDate: filters.startDate,
-        endDate: filters.endDate,
-      });
-      return result.rankings;
-    },
-    enabled: !!apiClient,
-  });
-
   // 查询销售额排行
   const { data: salesData, isLoading: salesLoading } = useQuery({
     queryKey: ['ranking-sales', filters, user?.id],

@@ -52,28 +52,6 @@ export function createApiClient(user: User) {
     },
 
     /**
-     * 获取销量排行
-     */
-    async getQuantityRanking(params: {
-      shop?: string
-      salesperson?: string
-      startDate?: Date
-      endDate?: Date
-      limit?: number
-    }) {
-      const searchParams = new URLSearchParams()
-      if (params.shop) searchParams.set('shop', params.shop)
-      if (params.salesperson) searchParams.set('salesperson', params.salesperson)
-      if (params.startDate) searchParams.set('startDate', params.startDate.toISOString())
-      if (params.endDate) searchParams.set('endDate', params.endDate.toISOString())
-      if (params.limit) searchParams.set('limit', params.limit.toString())
-
-      const response = await fetch(`/api/report/ranking-quantity?${searchParams}`, { headers })
-      if (!response.ok) throw new Error('Failed to fetch quantity ranking')
-      return response.json()
-    },
-
-    /**
      * 获取销售额排行
      */
     async getSalesRanking(params: {

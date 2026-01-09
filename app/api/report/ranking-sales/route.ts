@@ -15,8 +15,9 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const requestedShop = searchParams.get('shop') || undefined;
     const requestedSalesperson = searchParams.get('salesperson') || undefined;
+    // 当有 salesperson 参数时，不需要控制 shop
+    const requestedShop = requestedSalesperson ? undefined : (searchParams.get('shop') || undefined);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const limit = searchParams.get('limit');
