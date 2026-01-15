@@ -252,6 +252,14 @@ export async function getProductDetail(params: {
 }) {
   const { goodsName: goodsNameSpu, startDate, endDate, type, groupBy, shopFilter } = params;
 
+  // 计算去年同期日期
+  const lastYearStartDate = startDate
+    ? new Date(startDate.getFullYear() - 1, startDate.getMonth(), startDate.getDate())
+    : undefined;
+  const lastYearEndDate = endDate
+    ? new Date(endDate.getFullYear() - 1, endDate.getMonth(), endDate.getDate())
+    : undefined;
+
   // 根据 groupBy 参数决定按门店还是按销售员统计
   if (groupBy === 'salesperson') {
       // 首先查询公司总销售额
@@ -363,6 +371,31 @@ export async function getProductDetail(params: {
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
 
+      // 查询去年同期每个销售员的该SKU销售额
+      const lastYearResults = await prisma.$queryRaw<Array<{
+        doneSales1Name: string;
+        lastYearSalesAmount: number;
+      }>>`
+        SELECT
+          v.doneSales1Name,
+          SUM(v.goodsNum * v.goodsPrice) as lastYearSalesAmount
+        FROM report.fur_sell_order_goods v
+        WHERE v.goodsNameSpu = ${goodsNameSpu}
+          ${lastYearStartDate ? Prisma.sql`AND v.payTime >= ${lastYearStartDate}` : Prisma.empty}
+          ${lastYearEndDate ? Prisma.sql`AND v.payTime <= ${lastYearEndDate}` : Prisma.empty}
+          AND v.shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+          AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND v.goodsBom NOT LIKE 'FY%'
+          AND v.goodsNum != 0
+          AND v.doneSales1Name IS NOT NULL AND v.doneSales1Name != ''
+        GROUP BY v.doneSales1Name
+      `;
+
+      // 创建去年同期销售额映射
+      const lastYearSalesMap = new Map(
+        lastYearResults.map(item => [item.doneSales1Name, Number(item.lastYearSalesAmount || 0)])
+      );
+
       // 添加全局排名和计算加权金额
       const allResults = results.map((item, index) => {
         const quantity = Number(item.quantity);
@@ -380,6 +413,9 @@ export async function getProductDetail(params: {
           weightedAmount = salesAmount / (shopTotalSales / companyTotalSales ) * quantity;
         }
 
+        // 获取去年同期销售额
+        const lastYearSalesAmount = lastYearSalesMap.get(item.doneSales1Name) || 0;
+
         return {
           name: item.doneSales1Name || '未知销售员',
           shopName,
@@ -391,6 +427,7 @@ export async function getProductDetail(params: {
           weightedAmount,
           rank: index + 1,  // 全局排名
           hasShopSales: Number(item.hasShopSales) === 1,
+          lastYearSalesAmount,  // 去年同期销售额
         };
       });
 
@@ -444,6 +481,7 @@ export async function getProductDetail(params: {
           rank: 65, // 排名在最后
           hasShopSales: true,
           rankWeight: 0,
+          lastYearSalesAmount: lastYearSalesMap.get(sp.doneSales1Name) || 0,
         }));
 
         // 合并有数据的销售员和无数据的销售员
@@ -477,6 +515,7 @@ export async function getProductDetail(params: {
           rank: 65, // 排名在最后
           hasShopSales: true,
           rankWeight: 0,
+          lastYearSalesAmount: lastYearSalesMap.get(sp.doneSales1Name) || 0,
         };
       });
 
@@ -533,6 +572,30 @@ export async function getProductDetail(params: {
         ORDER BY ${type === 'quantity' ? Prisma.sql`quantity` : Prisma.sql`salesAmount`} DESC
       `;
 
+      // 查询去年同期每个门店的该SKU销售额
+      const lastYearShopResults = await prisma.$queryRaw<Array<{
+        shopName: string;
+        lastYearSalesAmount: number;
+      }>>`
+        SELECT
+          v.shopNameDone as shopName,
+          SUM(v.goodsNum * v.goodsPrice) as lastYearSalesAmount
+        FROM report.fur_sell_order_goods v
+        WHERE v.goodsNameSpu = ${goodsNameSpu}
+          ${lastYearStartDate ? Prisma.sql`AND v.payTime >= ${lastYearStartDate}` : Prisma.empty}
+          ${lastYearEndDate ? Prisma.sql`AND v.payTime <= ${lastYearEndDate}` : Prisma.empty}
+          AND v.shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+          AND v.goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801')
+          AND v.goodsBom NOT LIKE 'FY%'
+          AND v.goodsNum != 0
+        GROUP BY v.shopNameDone
+      `;
+
+      // 创建门店去年同期销售额映射
+      const lastYearShopSalesMap = new Map(
+        lastYearShopResults.map(item => [item.shopName, Number(item.lastYearSalesAmount || 0)])
+      );
+
       // 添加全局排名
       const allResults = results.map((item, index) => ({
         name: item.shopName,
@@ -541,6 +604,7 @@ export async function getProductDetail(params: {
         hasDisplay: Number(item.hasDisplay) === 1,
         shopTotalSales: Number(item.totalSales || 0),
         rank: index + 1,  // 全局排名
+        lastYearSalesAmount: lastYearShopSalesMap.get(item.shopName) || 0,
       }));
 
       // 如果有shopFilter，过滤出对应门店

@@ -19,6 +19,7 @@ interface ProductDetail {
   shopName?: string;  // 销售顾问所在门店
   companyTotalSales?: number;  // 公司总销售额
   weightedAmount?: number;  // 加权金额
+  lastYearSalesAmount?: number;  // 去年同期销售额
 }
 
 interface OrderDetail {
@@ -91,7 +92,7 @@ function getRankWeightColor(rankWeight?: number) {
   return RANK_COLORS[colorIndex];
 }
 
-type SortField = 'rank' | 'name' | 'quantity' | 'salesAmount' | 'weightedAmount' | 'percentage' | 'totalPercentage' | 'personTotalSales';
+type SortField = 'rank' | 'name' | 'quantity' | 'salesAmount' | 'weightedAmount' | 'percentage' | 'totalPercentage' | 'personTotalSales' | 'lastYearSalesAmount' | 'yoyGrowth';
 type SortDirection = 'asc' | 'desc';
 
 export default function ProductDetailModal({
@@ -297,6 +298,15 @@ export default function ProductDetailModal({
         const bTotalSales = b.shopTotalSales || b.personTotalSales || 0;
         aValue = aTotalSales > 0 ? (a.salesAmount / aTotalSales) * 100 : 0;
         bValue = bTotalSales > 0 ? (b.salesAmount / bTotalSales) * 100 : 0;
+      } else if (sortField === 'lastYearSalesAmount') {
+        aValue = a.lastYearSalesAmount || 0;
+        bValue = b.lastYearSalesAmount || 0;
+      } else if (sortField === 'yoyGrowth') {
+        // 同比增长率排序：去年为0时排在最后
+        const aLastYear = a.lastYearSalesAmount || 0;
+        const bLastYear = b.lastYearSalesAmount || 0;
+        aValue = aLastYear > 0 ? ((a.salesAmount - aLastYear) / aLastYear) * 100 : -Infinity;
+        bValue = bLastYear > 0 ? ((b.salesAmount - bLastYear) / bLastYear) * 100 : -Infinity;
       }
 
       // 比较逻辑
@@ -417,7 +427,15 @@ export default function ProductDetailModal({
                     </div>
                   </th>
                 )}
-
+                <th
+                  className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('yoyGrowth')}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>同比增长率</span>
+                    <SortIcon field="yoyGrowth" />
+                  </div>
+                </th>
 				{!isShopView && (
                   <th
                     className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
@@ -503,7 +521,21 @@ export default function ProductDetailModal({
                         {totalPercentage.toFixed(2)}%
                       </td>
                     )}
-
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-center font-medium">
+                      {(() => {
+                        const lastYear = item.lastYearSalesAmount ?? 0;
+                        if (lastYear === 0) {
+                          return <span className="text-gray-400">--</span>;
+                        }
+                        const growth = ((item.salesAmount - lastYear) / lastYear) * 100;
+                        const isPositive = growth >= 0;
+                        return (
+                          <span className={isPositive ? 'text-red-600' : 'text-green-600'}>
+                            {isPositive ? '+' : ''}{Math.round(growth)}%
+                          </span>
+                        );
+                      })()}
+                    </td>
 					{!isShopView && (
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-purple-600 font-medium">
                         {(item.personTotalSales ?? 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
