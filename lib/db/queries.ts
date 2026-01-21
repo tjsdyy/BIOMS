@@ -153,6 +153,14 @@ export async function getProductRankingByQuantity(
 export async function getProductRankingBySales(
   params: FilterParams & { limit?: number }
 ): Promise<RankingItem[]> {
+  // 计算去年同期日期范围
+  const lastYearStartDate = params.startDate
+    ? new Date(params.startDate.getFullYear() - 1, params.startDate.getMonth(), params.startDate.getDate())
+    : undefined;
+  const lastYearEndDate = params.endDate
+    ? new Date(params.endDate.getFullYear() - 1, params.endDate.getMonth(), params.endDate.getDate())
+    : undefined;
+
   const results = await prisma.$queryRaw<Array<{
     goodsNameSpu: string;
     goodsSpec: string;
@@ -175,6 +183,32 @@ export async function getProductRankingBySales(
     ORDER BY salesAmount DESC
     ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
   `;
+
+  // 查询去年同期销售额
+  const lastYearResults = await prisma.$queryRaw<Array<{
+    goodsNameSpu: string;
+    salesAmount: number;
+  }>>`
+    SELECT
+      goodsNameSpu,
+      SUM(goodsNum * goodsPrice) as salesAmount
+    FROM report.fur_sell_order_goods
+    WHERE 1=1
+      ${params.shop ? Prisma.sql`AND shopNameDone = ${params.shop}` : Prisma.empty}
+      ${params.salesperson ? Prisma.sql`AND doneSales1Name = ${params.salesperson}` : Prisma.empty}
+      ${lastYearStartDate ? Prisma.sql`AND payTime >= ${lastYearStartDate}` : Prisma.empty}
+      ${lastYearEndDate ? Prisma.sql`AND payTime <= ${lastYearEndDate}` : Prisma.empty}
+      AND shopNameDone NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND goodsBom NOT IN ('dingjin', '0500553', 'FY00049', 'FY00017', '6616801') and goodsBom not like 'FY%'
+      AND goodsNum != 0
+    GROUP BY goodsNameSpu
+  `;
+
+  // 创建去年同期销售额映射
+  const lastYearSalesMap = new Map<string, number>();
+  lastYearResults.forEach(item => {
+    lastYearSalesMap.set(item.goodsNameSpu, Number(item.salesAmount || 0));
+  });
 
   const resultsTotalCompanySales = await prisma.$queryRaw<Array<{
     goodsNameSpu: string;
@@ -230,6 +264,17 @@ export async function getProductRankingBySales(
       }
     }
 
+    // 计算同比增长率
+    const lastYearSalesAmount = lastYearSalesMap.get(item.goodsNameSpu) || 0;
+    let yoyGrowthRate: number | undefined;
+    if (lastYearSalesAmount > 0) {
+      // 同比增长率 = (当期 - 去年同期) / 去年同期 * 100
+      yoyGrowthRate = ((item.salesAmount - lastYearSalesAmount) / lastYearSalesAmount) * 100;
+    } else if (item.salesAmount > 0) {
+      // 去年同期为0，今年有销售，视为无穷大增长，用null或特殊值表示
+      yoyGrowthRate = undefined; // 或者可以设置为一个特殊值如 Infinity
+    }
+
     return {
       rank,
       goodsName: item.goodsNameSpu,
@@ -237,6 +282,8 @@ export async function getProductRankingBySales(
       salesAmount: item.salesAmount,
       percentage: total > 0 ? (item.salesAmount / total) * 100 : 0,
       status,
+      lastYearSalesAmount,
+      yoyGrowthRate,
     };
   });
 }

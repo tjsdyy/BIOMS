@@ -144,8 +144,30 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
       status: item.status,
 
       shopRatio: item.shopRatio || 0, // 门店占比（用于折线图）
+      lastYearSalesAmount: item.lastYearSalesAmount || 0, // 去年同期销售额
+      yoyGrowthRate: item.yoyGrowthRate, // 同比增长率
     }));
   }, [data, sortMode]);
+
+  // 判断是否为销售额排行榜（显示增长率曲线）
+  const isSalesType = type === 'sales';
+
+  // 计算增长率Y轴范围
+  const growthRateRange = useMemo(() => {
+    if (!isSalesType) return { min: -100, max: 100 };
+    const rates = chartData
+      .map(d => d.yoyGrowthRate)
+      .filter((r): r is number => r !== undefined && r !== null && isFinite(r));
+    if (rates.length === 0) return { min: -100, max: 100 };
+    const minRate = Math.min(...rates);
+    const maxRate = Math.max(...rates);
+    // 扩展范围以留出空间
+    const padding = Math.max(Math.abs(minRate), Math.abs(maxRate)) * 0.1;
+    return {
+      min: Math.floor(minRate - padding),
+      max: Math.ceil(maxRate + padding),
+    };
+  }, [chartData, isSalesType]);
 
   // 点击柱子事件
   const handleBarClick = (data: any) => {
@@ -170,6 +192,14 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
           salesLabel = isEmployee ? '个人销量' : '本店销量';
         } catch {}
       }
+
+      // 格式化同比增长率
+      const formatGrowthRate = (rate: number | undefined) => {
+        if (rate === undefined || rate === null) return '新品(去年无数据)';
+        if (!isFinite(rate)) return '新品(去年无数据)';
+        const sign = rate >= 0 ? '+' : '';
+        return `${sign}${rate.toFixed(2)}%`;
+      };
 
       return (
         <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-4">
@@ -196,6 +226,17 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
                 <p className="text-purple-600 font-semibold">
                   {ratioLabel}: {data.shopRatio.toFixed(2)}%
                 </p>
+              )}
+              {/* 销售额排行榜显示同比增长率 */}
+              {isSalesType && (
+                <>
+                  <p className="text-gray-600 mt-1">
+                    去年同期: ¥{data.lastYearSalesAmount?.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                  </p>
+                  <p className={`font-semibold ${data.yoyGrowthRate !== undefined && data.yoyGrowthRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    同比增长: {formatGrowthRate(data.yoyGrowthRate)}
+                  </p>
+                </>
               )}
             </>
           )}
@@ -240,8 +281,8 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
             }}
             tick={{ fontSize: 12 }}
           />
-          {/* 右侧Y轴：显示占比（仅在占比模式下） */}
-          {sortMode === 'ratio' && (
+          {/* 右侧Y轴：占比模式下显示占比，销售额模式下显示同比增长率 */}
+          {sortMode === 'ratio' ? (
             <YAxis
               yAxisId="right"
               orientation="right"
@@ -252,6 +293,19 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
               }}
               tick={{ fontSize: 12 }}
               domain={[0, 100]}
+              tickFormatter={(value) => `${value}%`}
+            />
+          ) : isSalesType && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              label={{
+                value: '同比增长率 (%)',
+                angle: 90,
+                position: 'insideRight'
+              }}
+              tick={{ fontSize: 12 }}
+              domain={[growthRateRange.min, growthRateRange.max]}
               tickFormatter={(value) => `${value}%`}
             />
           )}
@@ -270,11 +324,11 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
                       <span className="text-sm">门店占比</span>
                     </div>
                   </>
-                ) : (
+                ) : isSalesType ? (
                   <>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ff0000' }} />
-                      <span className="text-sm">高于平均</span>	
+                      <span className="text-sm">高于平均</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ffa500' }} />
@@ -282,7 +336,26 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded" style={{ backgroundColor: '#008000' }} />
-                      <span className="text-sm">低于平均 </span>
+                      <span className="text-sm">低于平均</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-1 rounded" style={{ backgroundColor: '#f97316' }} />
+                      <span className="text-sm">同比增长率</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ff0000' }} />
+                      <span className="text-sm">高于平均</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ffa500' }} />
+                      <span className="text-sm">等于平均</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#008000' }} />
+                      <span className="text-sm">低于平均</span>
                     </div>
                   </>
                 )}
@@ -304,8 +377,8 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
               />
             ))}
           </Bar>
-          {/* 折线图（仅在占比模式下显示） */}
-          {sortMode === 'ratio' && (
+          {/* 折线图（占比模式显示门店占比，销售额模式显示同比增长率） */}
+          {sortMode === 'ratio' ? (
             <Line
               yAxisId="right"
               type="monotone"
@@ -314,6 +387,17 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
               strokeWidth={3}
               dot={{ r: 4, fill: '#a855f7' }}
               activeDot={{ r: 6 }}
+            />
+          ) : isSalesType && (
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="yoyGrowthRate"
+              stroke="#f97316"
+              strokeWidth={3}
+              dot={{ r: 4, fill: '#f97316' }}
+              activeDot={{ r: 6 }}
+              connectNulls={true}
             />
           )}
         </ComposedChart>
