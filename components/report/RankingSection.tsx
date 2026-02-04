@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card } from '@tremor/react';
 import ViewToggle from '@/components/ui/ViewToggle';
 import SearchBox from '@/components/ui/SearchBox';
 import RangeFilter from '@/components/ui/RangeFilter';
-import RankingTable from './RankingTable';
+import PercentageRangeFilter from '@/components/ui/PercentageRangeFilter';
+import RankingTable, { SortField, SortDirection } from './RankingTable';
 import RankingChart from './RankingChart';
 import { RankingItem } from '@/types/report';
 
@@ -36,6 +37,16 @@ export default function RankingSection({
   const [selectedRange, setSelectedRange] = useState({ start: 1, end: 20 });
   const [searchKeyword, setSearchKeyword] = useState('');
   const [sortMode, setSortMode] = useState<'absolute' | 'ratio'>('absolute');
+
+  // 表格列排序状态
+  const [tableSortField, setTableSortField] = useState<SortField>('rank');
+  const [tableSortDirection, setTableSortDirection] = useState<SortDirection>('asc');
+
+  // 占比范围筛选状态
+  const [percentageFilter, setPercentageFilter] = useState<{ min: number | null; max: number | null }>({
+    min: null,
+    max: null,
+  });
 
   // 判断是否显示切换按钮
   const shouldShowSortToggle = useMemo(() => {
@@ -113,13 +124,38 @@ export default function RankingSection({
     );
   }, [data, searchKeyword]);
 
+  // 根据占比范围筛选数据（仅表格视图时生效）
+  const percentageFilteredData = useMemo(() => {
+    if (!searchedData || searchedData.length === 0) return [];
+    if (viewMode !== 'table') return searchedData;
+    if (percentageFilter.min === null && percentageFilter.max === null) return searchedData;
+
+    return searchedData.filter(item => {
+      // 根据当前排序模式选择占比字段
+      const percentage = sortMode === 'ratio' ? (item.shopRatio || 0) : item.percentage;
+      const min = percentageFilter.min ?? 0;
+      const max = percentageFilter.max ?? 100;
+      return percentage >= min && percentage <= max;
+    });
+  }, [searchedData, percentageFilter, sortMode, viewMode]);
+
+  // 获取数值的辅助函数：销售额排行榜用 salesAmount，数量排行榜用 quantity
+  const getValue = useCallback((item: RankingItem) => {
+    if (type === 'sales') {
+      return item.salesAmount || 0;
+    }
+    return item.quantity !== undefined ? item.quantity : 0;
+  }, [type]);
+
   // 根据排序模式处理数据
   const sortedData = useMemo(() => {
-    if (!searchedData || searchedData.length === 0) return [];
+    if (!percentageFilteredData || percentageFilteredData.length === 0) return [];
+
+    let baseData = percentageFilteredData;
 
     if (sortMode === 'ratio' && type === 'quantity') {
       // 第一步：过滤出全公司销量前30的商品
-      const top30ByTotal = [...searchedData]
+      const top30ByTotal = [...percentageFilteredData]
         .sort((a, b) => {
           const totalA = a.totalQuantity || 0;
           const totalB = b.totalQuantity || 0;
@@ -135,24 +171,93 @@ export default function RankingSection({
       });
 
       // 重新分配排名
-      return sorted.map((item, index) => ({
+      baseData = sorted.map((item, index) => ({
         ...item,
         rank: index + 1
       }));
     }
 
-    return searchedData; // 默认使用原始排序
-  }, [searchedData, sortMode, type]);
+    // 仅在表格视图时应用列排序（对全部数据排序）
+    if (viewMode === 'table') {
+      const tableSorted = [...baseData].sort((a, b) => {
+        let aValue: number;
+        let bValue: number;
+
+        switch (tableSortField) {
+          case 'rank':
+            aValue = a.rank;
+            bValue = b.rank;
+            break;
+          case 'value':
+            aValue = getValue(a);
+            bValue = getValue(b);
+            break;
+          case 'percentage':
+            aValue = sortMode === 'ratio' ? (a.shopRatio || 0) : a.percentage;
+            bValue = sortMode === 'ratio' ? (b.shopRatio || 0) : b.percentage;
+            break;
+          case 'lastYearSalesAmount':
+            aValue = a.lastYearSalesAmount || 0;
+            bValue = b.lastYearSalesAmount || 0;
+            break;
+          case 'yoyGrowthRate':
+            // 未定义的增长率排在最后
+            aValue = a.yoyGrowthRate ?? (tableSortDirection === 'asc' ? Infinity : -Infinity);
+            bValue = b.yoyGrowthRate ?? (tableSortDirection === 'asc' ? Infinity : -Infinity);
+            break;
+          case 'quantity':
+            aValue = a.quantity || 0;
+            bValue = b.quantity || 0;
+            break;
+          default:
+            aValue = a.rank;
+            bValue = b.rank;
+        }
+
+        return tableSortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      });
+      return tableSorted;
+    }
+
+    return baseData; // 图表视图使用原始排序
+  }, [percentageFilteredData, sortMode, type, viewMode, tableSortField, tableSortDirection, getValue]);
+
+  // 处理表格排序变更
+  const handleTableSortChange = useCallback((field: SortField, direction: SortDirection) => {
+    setTableSortField(field);
+    setTableSortDirection(direction);
+    // 排序变更时重置到第一页
+    setSelectedRange({ start: 1, end: 20 });
+  }, []);
 
   // 当搜索关键词变化时，重置分页到第一页
   useEffect(() => {
     setSelectedRange({ start: 1, end: 20 });
   }, [searchKeyword]);
 
-  // 当排序模式变化时，重置分页到第一页
+  // 当排序模式变化时，重置分页到第一页和表格排序
   useEffect(() => {
     setSelectedRange({ start: 1, end: 20 });
+    setTableSortField('rank');
+    setTableSortDirection('asc');
   }, [sortMode]);
+
+  // 当原始数据变化时，重置表格排序和占比筛选
+  useEffect(() => {
+    setTableSortField('rank');
+    setTableSortDirection('asc');
+    setPercentageFilter({ min: null, max: null });
+  }, [data]);
+
+  // 当占比筛选变化时，重置分页到第一页
+  useEffect(() => {
+    setSelectedRange({ start: 1, end: 20 });
+  }, [percentageFilter]);
+
+  // 处理占比筛选变更
+  const handlePercentageFilterChange = useCallback((range: { min: number | null; max: number | null }) => {
+    setPercentageFilter(range);
+  }, []);
 
   // 根据选择的范围过滤数据
   const filteredData = useMemo(() => {
@@ -211,6 +316,17 @@ export default function RankingSection({
             filteredCount={searchedData.length}
           />
 
+          {/* 占比范围筛选器 - 仅表格视图显示 */}
+          {viewMode === 'table' && (
+            <div className="py-3 border-b border-gray-200">
+              <PercentageRangeFilter
+                value={percentageFilter}
+                onChange={handlePercentageFilterChange}
+                label={sortMode === 'ratio' ? (type === 'quantity' ? '门店占比' : '占比') : '占比'}
+              />
+            </div>
+          )}
+
           {/* 分页筛选器 */}
           <RangeFilter
             totalCount={sortedData.length}
@@ -233,6 +349,10 @@ export default function RankingSection({
                   valueFormat={valueFormat}
                   startRank={selectedRange.start}
                   sortMode={sortMode}
+                  type={type}
+                  sortField={tableSortField}
+                  sortDirection={tableSortDirection}
+                  onSortChange={handleTableSortChange}
                 />
               )}
               {viewMode === 'chart' && (

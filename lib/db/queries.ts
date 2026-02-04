@@ -165,11 +165,13 @@ export async function getProductRankingBySales(
     goodsNameSpu: string;
     goodsSpec: string;
     salesAmount: number;
+    quantity: bigint;
   }>>`
     SELECT
       goodsNameSpu,
       goodsSpec,
-      SUM(goodsNum * goodsPrice) as salesAmount
+      SUM(goodsNum * goodsPrice) as salesAmount,
+      SUM(goodsNum) as quantity
     FROM report.fur_sell_order_goods
     WHERE 1=1
       ${params.shop ? Prisma.sql`AND shopNameDone = ${params.shop}` : Prisma.empty}
@@ -280,6 +282,7 @@ export async function getProductRankingBySales(
       goodsName: item.goodsNameSpu,
       goodsSpec: item.goodsSpec,
       salesAmount: item.salesAmount,
+      quantity: Number(item.quantity),
       percentage: total > 0 ? (item.salesAmount / total) * 100 : 0,
       status,
       lastYearSalesAmount,

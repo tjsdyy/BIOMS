@@ -233,7 +233,7 @@ export default function RankingChart({ data, valueLabel, valueFormat, shop, star
                   <p className="text-gray-600 mt-1">
                     去年同期: ¥{data.lastYearSalesAmount?.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                   </p>
-                  <p className={`font-semibold ${data.yoyGrowthRate !== undefined && data.yoyGrowthRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <p className={`font-semibold ${data.yoyGrowthRate !== undefined && data.yoyGrowthRate > 0 ? 'text-red-600' : data.yoyGrowthRate < 0 ? 'text-green-600' : 'text-gray-600'}`}>
                     同比增长: {formatGrowthRate(data.yoyGrowthRate)}
                   </p>
                 </>
