@@ -209,7 +209,94 @@ export async function getRankingBySalesperson(
   });
 }
 
-// 6. 获取指定销售员的品牌销售排行（用于销售员详情弹窗）
+// 6. 获取指定品牌下的SKU排行（用于品牌详情弹窗）
+export async function getBrandSkuRanking(
+  params: HomeFilterParams & { brandName: string; limit?: number }
+): Promise<HomeRankingItem[]> {
+  const results = await prisma.$queryRaw<Array<{
+    goodsName: string;
+    quantity: bigint;
+    salesAmount: number;
+    orderCount: bigint;
+  }>>`
+    SELECT
+      goodsName,
+      SUM(goodsNum) as quantity,
+      SUM(goodsNum * goodsPrice) as salesAmount,
+      COUNT(DISTINCT orderSn) as orderCount
+    FROM report.gcr_sell_order_goods
+    WHERE brandName = ${params.brandName}
+      ${params.shop ? Prisma.sql`AND shopName = ${params.shop}` : Prisma.empty}
+      ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
+      ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
+      AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND goodsNum != 0
+      AND goodsName IS NOT NULL AND goodsName != ''
+    GROUP BY goodsName
+    ORDER BY salesAmount DESC
+    LIMIT ${params.limit || 30}
+  `;
+
+  // 计算总额用于百分比
+  const total = results.reduce((sum, item) => sum + Number(item.salesAmount || 0), 0);
+
+  return results.map((item, index) => {
+    const salesAmount = Number(item.salesAmount || 0);
+    return {
+      rank: index + 1,
+      name: item.goodsName,
+      quantity: Number(item.quantity),
+      salesAmount,
+      percentage: total > 0 ? (salesAmount / total) * 100 : 0,
+      orderCount: Number(item.orderCount),
+    };
+  });
+}
+
+// 7. 获取指定门店下的SKU排行（用于门店详情弹窗）
+export async function getShopSkuRanking(
+  params: HomeFilterParams & { shopName: string; limit?: number }
+): Promise<HomeRankingItem[]> {
+  const results = await prisma.$queryRaw<Array<{
+    goodsName: string;
+    quantity: bigint;
+    salesAmount: number;
+    orderCount: bigint;
+  }>>`
+    SELECT
+      goodsName,
+      SUM(goodsNum) as quantity,
+      SUM(goodsNum * goodsPrice) as salesAmount,
+      COUNT(DISTINCT orderSn) as orderCount
+    FROM report.gcr_sell_order_goods
+    WHERE shopName = ${params.shopName}
+      ${params.startDate ? Prisma.sql`AND payTime >= ${params.startDate}` : Prisma.empty}
+      ${params.endDate ? Prisma.sql`AND payTime <= ${params.endDate}` : Prisma.empty}
+      AND shopName NOT IN ('换返货', '项目', '线上', '小程序', '新零售', '小红书', '特卖', '友人', '天猫家居', '积分商城', '天猫(SD)', '深圳卓悦特卖')
+      AND goodsNum != 0
+      AND goodsName IS NOT NULL AND goodsName != ''
+    GROUP BY goodsName
+    ORDER BY salesAmount DESC
+    LIMIT ${params.limit || 30}
+  `;
+
+  // 计算总额用于百分比
+  const total = results.reduce((sum, item) => sum + Number(item.salesAmount || 0), 0);
+
+  return results.map((item, index) => {
+    const salesAmount = Number(item.salesAmount || 0);
+    return {
+      rank: index + 1,
+      name: item.goodsName,
+      quantity: Number(item.quantity),
+      salesAmount,
+      percentage: total > 0 ? (salesAmount / total) * 100 : 0,
+      orderCount: Number(item.orderCount),
+    };
+  });
+}
+
+// 8. 获取指定销售员的品牌销售排行（用于销售员详情弹窗）
 export async function getSalespersonBrandDetail(
   params: HomeFilterParams & { salespersonName: string }
 ): Promise<HomeRankingItem[]> {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getShopSalespersonDetail } from '@/lib/db/home-queries';
+import { getShopSalespersonDetail, getShopSkuRanking } from '@/lib/db/home-queries';
 import { getUserFromRequest } from '@/lib/auth/api-auth';
 
 export async function GET(request: NextRequest) {
@@ -25,17 +25,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const salespersonDetails = await getShopSalespersonDetail({
+    const params = {
       shopName,
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
-    });
+    };
 
-    return NextResponse.json({ salespersonDetails });
+    // 并行查询销售员排行和SKU排行
+    const [salespersonDetails, skuDetails] = await Promise.all([
+      getShopSalespersonDetail(params),
+      getShopSkuRanking({ ...params, limit: 30 }),
+    ]);
+
+    return NextResponse.json({ salespersonDetails, skuDetails });
   } catch (error) {
-    console.error('Error fetching shop salesperson detail:', error);
+    console.error('Error fetching shop detail:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch shop salesperson detail' },
+      { error: 'Failed to fetch shop detail' },
       { status: 500 }
     );
   }

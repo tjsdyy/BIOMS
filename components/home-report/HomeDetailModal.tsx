@@ -1,6 +1,6 @@
 'use client';
 
-import { Dialog, Transition } from '@headlessui/react';
+import { Dialog, Transition, Tab } from '@headlessui/react';
 import { Fragment, useState, useMemo } from 'react';
 import { XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { HomeRankingItem } from '@/types/home-report';
@@ -8,25 +8,28 @@ import { HomeRankingItem } from '@/types/home-report';
 type SortField = 'rank' | 'name' | 'salesAmount' | 'quantity' | 'percentage' | 'orderCount';
 type SortDirection = 'asc' | 'desc';
 
+interface TabData {
+  label: string;
+  nameColumnHeader: string;
+  data: HomeRankingItem[];
+}
+
 interface HomeDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   subtitle: string;
-  nameColumnHeader: string;
-  details: HomeRankingItem[];
+  tabs: TabData[];
   isLoading: boolean;
 }
 
-export default function HomeDetailModal({
-  isOpen,
-  onClose,
-  title,
-  subtitle,
+function RankingTable({
+  data,
   nameColumnHeader,
-  details,
-  isLoading,
-}: HomeDetailModalProps) {
+}: {
+  data: HomeRankingItem[];
+  nameColumnHeader: string;
+}) {
   const [sortField, setSortField] = useState<SortField>('rank');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -41,8 +44,8 @@ export default function HomeDetailModal({
   };
 
   // 排序数据
-  const sortedDetails = useMemo(() => {
-    return [...details].sort((a, b) => {
+  const sortedData = useMemo(() => {
+    return [...data].sort((a, b) => {
       let aValue: number | string = 0;
       let bValue: number | string = 0;
 
@@ -82,7 +85,7 @@ export default function HomeDetailModal({
         ? (aValue as number) - (bValue as number)
         : (bValue as number) - (aValue as number);
     });
-  }, [details, sortField, sortDirection]);
+  }, [data, sortField, sortDirection]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
@@ -108,6 +111,98 @@ export default function HomeDetailModal({
     }
   };
 
+  if (data.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        暂无数据
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
+      <div className="overflow-x-auto max-h-[500px]">
+        <table className="min-w-full divide-y divide-gray-300">
+          <thead className="bg-gray-50 sticky top-0 z-10">
+            <tr>
+              <th
+                className="py-3.5 pl-4 pr-3 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('rank')}
+              >
+                排名 <SortIcon field="rank" />
+              </th>
+              <th
+                className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('name')}
+              >
+                {nameColumnHeader} <SortIcon field="name" />
+              </th>
+              <th
+                className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('salesAmount')}
+              >
+                销售额 <SortIcon field="salesAmount" />
+              </th>
+              <th
+                className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('quantity')}
+              >
+                销量 <SortIcon field="quantity" />
+              </th>
+              <th
+                className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('percentage')}
+              >
+                占比 <SortIcon field="percentage" />
+              </th>
+              <th
+                className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('orderCount')}
+              >
+                订单数 <SortIcon field="orderCount" />
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {sortedData.map((item) => (
+              <tr key={`${item.rank}-${item.name}`} className="hover:bg-gray-50">
+                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-center">
+                  <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${getRankBadgeColor(item.rank)}`}>
+                    {item.rank}
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-center text-gray-900 max-w-[200px] truncate" title={item.name}>
+                  {item.name}
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm text-center font-semibold text-gray-900">
+                  ¥{item.salesAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
+                  {item.quantity.toLocaleString()}
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-blue-600 font-medium">
+                  {item.percentage.toFixed(2)}%
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
+                  {item.orderCount?.toLocaleString() || '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default function HomeDetailModal({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  tabs,
+  isLoading,
+}: HomeDetailModalProps) {
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -160,85 +255,45 @@ export default function HomeDetailModal({
                   <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
                   </div>
+                ) : tabs.length === 1 ? (
+                  // 单个tab时不显示tab栏
+                  <div className="mt-4">
+                    <RankingTable
+                      data={tabs[0].data}
+                      nameColumnHeader={tabs[0].nameColumnHeader}
+                    />
+                  </div>
                 ) : (
-                  <div className="mt-4 overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
-                    <div className="overflow-x-auto max-h-[500px]">
-                      <table className="min-w-full divide-y divide-gray-300">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            <th
-                              className="py-3.5 pl-4 pr-3 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
-                              onClick={() => handleSort('rank')}
-                            >
-                              排名 <SortIcon field="rank" />
-                            </th>
-                            <th
-                              className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
-                              onClick={() => handleSort('name')}
-                            >
-                              {nameColumnHeader} <SortIcon field="name" />
-                            </th>
-                            <th
-                              className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
-                              onClick={() => handleSort('salesAmount')}
-                            >
-                              销售额 <SortIcon field="salesAmount" />
-                            </th>
-                            <th
-                              className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
-                              onClick={() => handleSort('quantity')}
-                            >
-                              销量 <SortIcon field="quantity" />
-                            </th>
-                            <th
-                              className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
-                              onClick={() => handleSort('percentage')}
-                            >
-                              占比 <SortIcon field="percentage" />
-                            </th>
-                            <th
-                              className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
-                              onClick={() => handleSort('orderCount')}
-                            >
-                              订单数 <SortIcon field="orderCount" />
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 bg-white">
-                          {sortedDetails.map((item) => (
-                            <tr key={`${item.rank}-${item.name}`} className="hover:bg-gray-50">
-                              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-center">
-                                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${getRankBadgeColor(item.rank)}`}>
-                                  {item.rank}
-                                </span>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-center text-gray-900">
-                                {item.name}
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm text-center font-semibold text-gray-900">
-                                ¥{item.salesAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
-                                {item.quantity.toLocaleString()}
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-blue-600 font-medium">
-                                {item.percentage.toFixed(2)}%
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm text-center text-gray-700">
-                                {item.orderCount?.toLocaleString() || '-'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {!isLoading && details.length === 0 && (
-                  <div className="text-center py-12 text-gray-500">
-                    暂无数据
-                  </div>
+                  // 多个tab时显示tab栏
+                  <Tab.Group>
+                    <Tab.List className="flex space-x-1 rounded-xl bg-green-900/20 p-1">
+                      {tabs.map((tab, index) => (
+                        <Tab
+                          key={index}
+                          className={({ selected }) =>
+                            `w-full rounded-lg py-2.5 text-sm font-medium leading-5
+                            ${
+                              selected
+                                ? 'bg-white text-green-700 shadow'
+                                : 'text-green-600 hover:bg-white/[0.12] hover:text-green-700'
+                            }`
+                          }
+                        >
+                          {tab.label}
+                        </Tab>
+                      ))}
+                    </Tab.List>
+                    <Tab.Panels className="mt-4">
+                      {tabs.map((tab, index) => (
+                        <Tab.Panel key={index}>
+                          <RankingTable
+                            data={tab.data}
+                            nameColumnHeader={tab.nameColumnHeader}
+                          />
+                        </Tab.Panel>
+                      ))}
+                    </Tab.Panels>
+                  </Tab.Group>
                 )}
 
                 <div className="mt-6 flex justify-end">

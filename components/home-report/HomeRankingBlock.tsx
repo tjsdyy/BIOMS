@@ -11,6 +11,12 @@ import HomeDetailModal from './HomeDetailModal';
 import { HomeRankingItem, HomeRankingDimension } from '@/types/home-report';
 import { authFetch } from '@/lib/api/auth-fetch';
 
+interface TabData {
+  label: string;
+  nameColumnHeader: string;
+  data: HomeRankingItem[];
+}
+
 interface HomeRankingBlockProps {
   title: string;
   dimension: HomeRankingDimension;
@@ -42,8 +48,7 @@ export default function HomeRankingBlock({
 
   // 弹窗状态
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedName, setSelectedName] = useState('');
-  const [modalData, setModalData] = useState<HomeRankingItem[]>([]);
+  const [modalTabs, setModalTabs] = useState<TabData[]>([]);
   const [isModalLoading, setIsModalLoading] = useState(false);
 
   // 获取弹窗标题和列名
@@ -51,17 +56,15 @@ export default function HomeRankingBlock({
     switch (dimension) {
       case 'brand':
         return {
-          title: `${name} - 销售员销售排行`,
+          title: `${name} - 销售详情`,
           subtitle: `按销售额倒序`,
-          nameColumnHeader: '销售员',
           apiUrl: '/api/home-report/brand-detail',
           paramName: 'brandName',
         };
       case 'shop':
         return {
-          title: `${name} - 销售员销售排行`,
+          title: `${name} - 销售详情`,
           subtitle: `按销售额倒序`,
-          nameColumnHeader: '销售员',
           apiUrl: '/api/home-report/shop-detail',
           paramName: 'shopName',
         };
@@ -69,7 +72,6 @@ export default function HomeRankingBlock({
         return {
           title: `${name} - 品牌销售排行`,
           subtitle: `按销售额倒序`,
-          nameColumnHeader: '品牌',
           apiUrl: '/api/home-report/salesperson-detail',
           paramName: 'salespersonName',
         };
@@ -79,17 +81,14 @@ export default function HomeRankingBlock({
   const [modalConfig, setModalConfig] = useState({
     title: '',
     subtitle: '',
-    nameColumnHeader: '',
   });
 
   // 处理点击
   const handleItemClick = useCallback(async (name: string) => {
     const config = getModalConfig(name);
-    setSelectedName(name);
     setModalConfig({
       title: config.title,
       subtitle: config.subtitle,
-      nameColumnHeader: config.nameColumnHeader,
     });
     setIsModalOpen(true);
     setIsModalLoading(true);
@@ -106,12 +105,35 @@ export default function HomeRankingBlock({
         throw new Error('Failed to fetch detail');
       }
       const result = await response.json();
-      // 根据维度获取正确的数据字段
-      const detailData = result.salespersonDetails || result.brandDetails || [];
-      setModalData(detailData);
+
+      // 根据维度构建tabs数组
+      const tabs: TabData[] = [];
+
+      if (dimension === 'brand' || dimension === 'shop') {
+        // 品牌和门店维度有两个tab：销售员排行 + SKU排行
+        tabs.push({
+          label: '销售员排行',
+          nameColumnHeader: '销售员',
+          data: result.salespersonDetails || [],
+        });
+        tabs.push({
+          label: 'SKU排行',
+          nameColumnHeader: 'SKU',
+          data: result.skuDetails || [],
+        });
+      } else {
+        // 销售员维度只有一个tab：品牌排行
+        tabs.push({
+          label: '品牌排行',
+          nameColumnHeader: '品牌',
+          data: result.brandDetails || [],
+        });
+      }
+
+      setModalTabs(tabs);
     } catch (error) {
       console.error('Error fetching detail:', error);
-      setModalData([]);
+      setModalTabs([]);
     } finally {
       setIsModalLoading(false);
     }
@@ -268,8 +290,7 @@ export default function HomeRankingBlock({
         onClose={() => setIsModalOpen(false)}
         title={modalConfig.title}
         subtitle={modalConfig.subtitle}
-        nameColumnHeader={modalConfig.nameColumnHeader}
-        details={modalData}
+        tabs={modalTabs}
         isLoading={isModalLoading}
       />
     </>

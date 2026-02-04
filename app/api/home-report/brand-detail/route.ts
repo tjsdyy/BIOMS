@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBrandSalespersonDetail } from '@/lib/db/home-queries';
+import { getBrandSalespersonDetail, getBrandSkuRanking } from '@/lib/db/home-queries';
 import { getUserFromRequest } from '@/lib/auth/api-auth';
 import { getShopFilter } from '@/lib/auth/permissions';
 
@@ -30,18 +30,24 @@ export async function GET(request: NextRequest) {
     // 应用权限控制
     const shop = getShopFilter(user, requestedShop);
 
-    const salespersonDetails = await getBrandSalespersonDetail({
+    const params = {
       brandName,
       shop,
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
-    });
+    };
 
-    return NextResponse.json({ salespersonDetails });
+    // 并行查询销售员排行和SKU排行
+    const [salespersonDetails, skuDetails] = await Promise.all([
+      getBrandSalespersonDetail(params),
+      getBrandSkuRanking({ ...params, limit: 30 }),
+    ]);
+
+    return NextResponse.json({ salespersonDetails, skuDetails });
   } catch (error) {
-    console.error('Error fetching brand salesperson detail:', error);
+    console.error('Error fetching brand detail:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch brand salesperson detail' },
+      { error: 'Failed to fetch brand detail' },
       { status: 500 }
     );
   }
